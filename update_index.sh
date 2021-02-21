@@ -150,5 +150,6 @@ fi
 
 echo "`date` - Starting python server with new data"
 python -m  http.server $PORT &
+systemctrl restart nginx
 
 
