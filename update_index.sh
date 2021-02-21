@@ -122,7 +122,7 @@ cat $ROWS_FILE | while read LINE
 do
   CITY=$(echo $LINE | cut -d "|" -f1)
   COUNT=$(echo $LINE | cut -d "|" -f2)
-  echo "'$CITY' : [ r$LAT, $LNG, $COUNT ]," >> $DATE_LOG
+  echo "'$CITY' : [ $LAT, $LNG, $COUNT ]," >> $DATE_LOG
 done
 
 ## if the datelog file is not created, exit
