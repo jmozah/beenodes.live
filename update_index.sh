@@ -13,28 +13,25 @@ LIVE_OVERLAYS=`curl -X GET $CRAWLER/topology | jq  | grep -v ":\|}\|]\|{" | tr -
 OVERLAY_COUNT=`echo $LIVE_OVERLAYS | wc -l`
 echo "`date` - total of $OVERLAY_COUNT overlays to process"
 
-ROWS=$(sqlite3 $DBNAME "select CITY, IP from BEENODES where DATE=\"$DATE\" LIMIT 1;")
-if [ $? -eq 1 ]
-then
-   echo "`date` - ERROR: could not access database"
-   exit
-fi
-if [ ! -z "$ROWS" ]
-then
-  echo "`date` - ERROR: $DATE is already processed"
-  exit
-fi
-
-
 if [ ! -d "$HTML_DIR" ]
 then
   mkdir $HTML_DIR
   echo "`date` - created dir $HTML_DIR"
 fi
 
+ROWS=$(sqlite3 $DBNAME "select CITY, IP from BEENODES where DATE=\"$DATE\" LIMIT 1;")
+if [ $? -eq 1 ]
+then
+   echo "`date` - ERROR: could not access database"
+   exit
+fi
 
-for OVRLA in $LIVE_OVERLAYS
-do
+if [ ! -z "$ROWS" ]
+then
+   echo "`date` - $DATE is already processed, just updating the html file"
+else
+   for OVRLA in $LIVE_OVERLAYS
+   do
    ## Get the IP for the overlay from DB
    IP=$(sqlite3 $DBNAME "select IP from OVERLAYTOIP where OVERLAY=\"$OVRLA\";")
    if [ -z "$IP" ]
@@ -114,6 +111,7 @@ do
       continue
    fi
 done
+fi
 
 DATE_LOG="$DATE.log"
 ROWS_FILE="rows.log"
