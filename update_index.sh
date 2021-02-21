@@ -116,12 +116,15 @@ do
 done
 
 DATE_LOG="$DATE.log"
-ROWS=$(sqlite3 $DBNAME "select CITY, COUNT(CITY) from BEENODES where DATE=\"$DATE\" GROUP BY CITY;")
-for ROW in $ROWS
+ROWS_FILE="rows.log"
+rm $ROWS_FILE
+sqlite3 "$DBNAME" "select CITY, COUNT(CITY) from BEENODES where DATE=\"$DATE\" GROUP BY CITY;" >> $ROWS_FILE
+ROWS=`cat $ROWS_FILE`
+cat $ROWS_FILE | while read LINE
 do
-  CITY=$(echo $ROW | cut -d "|" -f1)
-  COUNT=$(echo $ROW | cut -d "|" -f2)
-  echo "'$CITY' : [ $LAT, $LNG, $COUNT ]," >> $DATE_LOG
+  CITY=$(echo $LINE | cut -d "|" -f1)
+  COUNT=$(echo $LINE | cut -d "|" -f2)
+  echo "'$CITY' : [ r$LAT, $LNG, $COUNT ]," >> $DATE_LOG
 done
 
 ## if the datelog file is not created, exit
@@ -149,7 +152,7 @@ then
 fi
 
 echo "`date` - Starting python server with new data"
-python -m  http.server $PORT &
-systemctrl restart nginx
+python -m  http.server $PORT >> /root/beenodes.log 2>&1 &
+systemctl restart nginx
 
 
