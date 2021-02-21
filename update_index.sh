@@ -19,7 +19,7 @@ then
   echo "`date` - created dir $HTML_DIR"
 fi
 
-ROWS=$(sqlite3 $DBNAME "select CITY, IP from BEENODES where DATE=\"$DATE\" LIMIT 1;")
+ROWS=$(sqlite3 $DBNAME "select * from BEENODES where DATE=\"$DATE\" LIMIT 1;")
 if [ $? -eq 1 ]
 then
    echo "`date` - ERROR: could not access database"
@@ -106,7 +106,7 @@ else
       continue
    fi
 
-   CMD=$(sqlite3 $DBNAME "insert into BEENODES (DATE, ID)  values (\"$DATE\", \"$ID\");")
+   CMD=$(sqlite3 $DBNAME "insert into BEENODES (DATE, IPTOCITY_ID)  values (\"$DATE\", \"$ID\");")
    if [ $? -eq 1 ]
    then
       echo "`date` - ERROR: could not insert $DATE and $ID in to BEENODES table"
@@ -119,12 +119,14 @@ DATE_LOG="$DATE.log"
 ROWS_FILE="rows.log"
 rm $ROWS_FILE
 rm $DATE_LOG
-`sqlite3 "$DBNAME" "select CITY, COUNT(CITY) from BEENODES where DATE=\"$DATE\" INNER JOIN IPTOCITY ON IPTOCITY.ID = BEENODES.ID  GROUP BY CITY;"` >> $ROWS_FILE
+`sqlite3 "$DBNAME" "CITY, LAT, LNG, COUNT(CITY) from BEENODES INNER JOIN IPTOCITY on IPTOCITY.ID = BEENODES.IPTOCITY_ID where DATE=\"$DATE\" GROUP BY CITY;;"` >> $ROWS_FILE
 ROWS=`cat $ROWS_FILE`
 cat $ROWS_FILE | while read LINE
 do
   CITY=$(echo $LINE | cut -d "|" -f1)
-  COUNT=$(echo $LINE | cut -d "|" -f2)
+  LAT=$(echo $LINE | cut -d "|" -f2)
+  LNG=$(echo $LINE | cut -d "|" -f3)
+  COUNT=$(echo $LINE | cut -d "|" -f4)
   echo "'$CITY' : [ $LAT, $LNG, $COUNT ]," >> $DATE_LOG
 done
 
