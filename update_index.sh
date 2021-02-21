@@ -70,7 +70,7 @@ else
    fi
 
    ## Now get the City for the IP
-   CITYSTR=$(sqlite3 $DBNAME "select LAT, LNG, CITY from IPTOCITY where IP=\"$IP\";")
+   CITYSTR=$(sqlite3 $DBNAME "select ID, LAT, LNG, CITY from IPTOCITY where IP=\"$IP\";")
    if [ -z "$CITYSTR" ]
    then
       url=$(curl -X GET "http://ipinfo.io/${IP}?token=21a1a8a7be196b")
@@ -90,10 +90,12 @@ else
       else
          echo "`date` - Added $IP, $LAT, $LNG and $CITY in to IPTOCITY table"
       fi
+      ID=$(sqlite3 $DBNAME "select MAX(ID) from IPTOCITY;")
    else
-      LAT=$(echo $CITYSTR | cut -d "|" -f1)
-      LNG=$(echo $CITYSTR | cut -d "|" -f2)
-      CITY=$(echo $CITYSTR | cut -d "|" -f3)
+      ID=$(echo $CITYSTR | cut -d "|" -f1)
+      LAT=$(echo $CITYSTR | cut -d "|" -f2)
+      LNG=$(echo $CITYSTR | cut -d "|" -f3)
+      CITY=$(echo $CITYSTR | cut -d "|" -f4)
       echo "`date` - Found $IP, $LAT, $LNG and $CITY from IPTOCITY table"
    fi
 
@@ -104,10 +106,10 @@ else
       continue
    fi
 
-   CMD=$(sqlite3 $DBNAME "insert into BEENODES (DATE, CITY, IP)  values (\"$DATE\", \"$CITY\", \"$IP\");")
+   CMD=$(sqlite3 $DBNAME "insert into BEENODES (DATE, ID)  values (\"$DATE\", \"$ID\");")
    if [ $? -eq 1 ]
    then
-      echo "`date` - ERROR: could not insert $DATE, $CITY and $IP in to BEENODES table"
+      echo "`date` - ERROR: could not insert $DATE and $ID in to BEENODES table"
       continue
    fi
 done
@@ -116,7 +118,8 @@ fi
 DATE_LOG="$DATE.log"
 ROWS_FILE="rows.log"
 rm $ROWS_FILE
-sqlite3 "$DBNAME" "select CITY, COUNT(CITY) from BEENODES where DATE=\"$DATE\" GROUP BY CITY;" >> $ROWS_FILE
+rm $DATE_LOG
+`sqlite3 "$DBNAME" "select CITY, COUNT(CITY) from BEENODES where DATE=\"$DATE\" INNER JOIN IPTOCITY ON IPTOCITY.ID = BEENODES.ID  GROUP BY CITY;"` >> $ROWS_FILE
 ROWS=`cat $ROWS_FILE`
 cat $ROWS_FILE | while read LINE
 do

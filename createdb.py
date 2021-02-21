@@ -6,7 +6,7 @@ conn = sqlite3.connect('beenodeslive.db')
 print("Opened database successfully");
 
 conn.execute('''CREATE TABLE IPTOCITY
-         (D INTEGER PRIMARY KEY,
+         (ID INTEGER PRIMARY KEY,
           IP             TEXT     NOT NULL,
           LAT            REAL     NOT NULL,
           LNG            REAL     NOT NULL,
@@ -22,8 +22,7 @@ print("Table OVERLAYTOIP created successfully");
 conn.execute('''CREATE TABLE BEENODES
          (ID INTEGER PRIMARY KEY,
           DATE            TEXT     NOT NULL,
-          CITY            TEXT     NOT NULL,
-          IP              TEXT    NOT NULL);''')
+          IPTOCITY_ID     INTEGER     NOT NULL);''')
 conn.execute('''CREATE INDEX beenodes_date on BEENODES(DATE)''')
 print("Table BEENODES created successfully");
 conn.close()
