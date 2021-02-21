@@ -134,23 +134,17 @@ fi
 
 # create a html using a template
 NEW_HTML="$DATE.html"
-sed '/CITYMAP/ r $DATE_LOG' index.html.template >> $NEW_HTML
+sed '/CITYMAP/r $DATE_LOG' index.html.template >> $NEW_HTML
 mv $NEW_HTML $HTML_DIR || exit
 cd $HTML_DIR || exit
 rm index.html || exit
 ln -s $NEW_HTML index.html || exit
 echo "`date` - Creted new html $NEW_HTML and made it index.html"
 
-# restart the
-kill -9 "$(ps -aef | grep http.server | grep -v grep  | tr -s " "  | cut -d " " -f2)" || exit
-if [ $? -eq 1 ]
-then
-    echo "`date` - ERROR: could not kill the python server"
-    exit
-fi
-
-echo "`date` - Starting python server with new data"
-python -m  http.server $PORT >> /root/beenodes.log 2>&1 &
+# restart the webserver
+kill -9 "$(ps -aef | grep http.server | grep -v grep  | tr -s " "  | cut -d " " -f2)"
+echo "`date` - Starting python server with new html file $NEW_HTML"
+python3 -m  http.server $PORT >> /root/beenodes.log 2>&1 &
 systemctl restart nginx
 
 
