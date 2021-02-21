@@ -135,7 +135,7 @@ fi
 # create a html using a template
 NEW_HTML="$DATE.html"
 SED="sed '/CITYMAP/r $DATE_LOG' index.html.template"
-$SED | sh - >> $NEW_HTML
+echo $SED | sh - >> $NEW_HTML
 mv $NEW_HTML $HTML_DIR || exit
 cd $HTML_DIR || exit
 rm index.html || exit
