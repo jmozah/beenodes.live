@@ -45,7 +45,7 @@
                            if (city[key][2] > 0) {
                                   lat = city[key][0]
                                   lng = city[key][1]
-                                  marker1 = L.marker([lat, lng],{icon: greenIcon}).bindPopup(key +  ', newBee = ' + city[key][2]);
+                                  marker1 = L.marker([lat, lng],{icon: greenIcon}).bindPopup(key +  ', count = ' + city[key][2]);
                                   marker1.on('mouseover', function (e) {
             				this.openPopup();
         			   });
@@ -59,7 +59,7 @@
                             if (city[key][3] > 0) {
                                   lat = city[key][0]+extra
                                   lng = city[key][1]+extra
-                                  marker2 = L.marker([lat, lng],{icon: redIcon}).bindPopup(key +  ', oldBee = ' + city[key][3]);
+                                  marker2 = L.marker([lat, lng],{icon: redIcon}).bindPopup(key +  ', count = ' + city[key][3]);
                                   group.push(marker2);
                                   marker2.on('mouseover', function (e) {
             				this.openPopup();
