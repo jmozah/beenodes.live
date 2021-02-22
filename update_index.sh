@@ -59,13 +59,16 @@ else
    for OVRLA in $LIVE_OVERLAYS
    do
    TOTAL_OVERLAYS=$((TOTAL_OVERLAYS+1))
+
    ## Get the IP for the overlay from DB
    IP=$(sqlite3 $DBNAME "select IP from OVERLAYTOIP where OVERLAY=\"$OVRLA\";")
+
    if [ -z "$IP" ] || [ "$IP" == "NOIP" ]
    then
       NEW_OVERLAYS=$((NEW_OVERLAYS+1))
-      ORIGINAL_IP=IP
-      ## If not in the DB, get it from the logs
+      ORIGINAL_IP=$IP
+
+      ## If not in the DB or has "NOIP", check the logs to see if we can harvest the ip from there
       IP=$(grep $OVRLA $CRAWLER_LOGS | grep "successfully connected to peer\|peer not reachable from kademlia" | grep ip4 | tail -n1 |cut -d "/" -f3)
       if [ ! -z "$IP" ]
       then
@@ -87,6 +90,7 @@ else
          fi
 	    else
 	        ## could not find the IP in DB or in logs
+	        ## if the original IP is NOIP, do not insert again
 	        if [ "$ORIGINAL_IP" != "NOIP" ]
 	        then
 	           IP="NOIP"
