@@ -62,7 +62,6 @@ else
 
    ## Get the IP for the overlay from DB
    IP=$(sqlite3 $DBNAME "select IP from OVERLAYTOIP where OVERLAY=\"$OVRLA\";")
-
    if [ -z "$IP" ] || [ "$IP" == "NOIP" ]
    then
       NEW_OVERLAYS=$((NEW_OVERLAYS+1))
@@ -106,6 +105,7 @@ else
           fi
       fi
    fi
+
    # if we could not find the IP ignore this overlay, its of no use for us
    if [ "$IP" == "NOIP" ]
    then
@@ -165,8 +165,8 @@ else
 done
 fi
 
-DATE_LOG="$DATE.log"
-ROWS_FILE="rows.log"
+DATE_LOG="$PWD/log/$DATE.log"
+ROWS_FILE="$PWD/log/rows.log"
 rm $ROWS_FILE
 rm $DATE_LOG
 CMD=$(sqlite3 "$DBNAME" "select CITY, LAT, LNG, COUNT(CITY) from BEENODES INNER JOIN IPTOCITY on IPTOCITY.ID = BEENODES.IPTOCITY_ID where DATE=\"$DATE\" GROUP BY CITY;")
