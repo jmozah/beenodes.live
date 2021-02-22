@@ -69,6 +69,11 @@ else
       IP=$(grep $OVRLA $CRAWLER_LOGS | grep "successfully connected to peer\|peer not reachable from kademlia" | grep ip4 | tail -n1 |cut -d "/" -f3)
       if [ ! -z "$IP" ]
       then
+         if [ "$IP" == "127.0.0.1" ]
+         then
+            continue
+         fi
+
          ## insert the harvested IP in to DB for future use
          CMD=$(sqlite3 $DBNAME "insert into OVERLAYTOIP (OVERLAY, IP)  values (\"$OVRLA\",\"$IP\");")
          if [ $? -eq 1 ]
@@ -169,6 +174,10 @@ do
   LAT=$(echo $LINE | cut -d "|" -f2)
   LNG=$(echo $LINE | cut -d "|" -f3)
   COUNT=$(echo $LINE | cut -d "|" -f4)
+  if [ "$CITY" == "null" ]
+  then
+      continue
+  fi
   echo "'$CITY' : [ $LAT, $LNG, $COUNT ]," >> $DATE_LOG
 done
 
