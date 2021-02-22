@@ -46,7 +46,7 @@ AddCountersToDB () {
 ROWS=$(sqlite3 $DBNAME "select * from BEENODES where DATE=\"$DATE\" LIMIT 1;")
 if [ $? -eq 1 ]
 then
-   ERR_NO_DB=$((ERR_NO_DB-1))
+   ERR_NO_DB=$((ERR_NO_DB+1))
    echo "$(date) - ERROR: could not access database"
    AddCountersToDB
    exit
@@ -58,12 +58,12 @@ then
 else
    for OVRLA in $LIVE_OVERLAYS
    do
-   TOTAL_OVERLAYS=$((TOTAL_OVERLAYS-1))
+   TOTAL_OVERLAYS=$((TOTAL_OVERLAYS+1))
    ## Get the IP for the overlay from DB
    IP=$(sqlite3 $DBNAME "select IP from OVERLAYTOIP where OVERLAY=\"$OVRLA\";")
    if [ -z "$IP" ] || [ "$IP" == "NOIP" ]
    then
-      NEW_OVERLAYS=$((NEW_OVERLAYS-1))
+      NEW_OVERLAYS=$((NEW_OVERLAYS+1))
       ORIGINAL_IP=IP
       ## If not in the DB, get it from the logs
       IP=$(grep $OVRLA $CRAWLER_LOGS | grep "successfully connected to peer\|peer not reachable from kademlia" | grep ip4 | tail -n1 |cut -d "/" -f3)
@@ -73,11 +73,11 @@ else
          CMD=$(sqlite3 $DBNAME "insert into OVERLAYTOIP (OVERLAY, IP)  values (\"$OVRLA\",\"$IP\");")
          if [ $? -eq 1 ]
          then
-            ERR_INSERTING_IP=$((ERR_INSERTING_IP-1))
+            ERR_INSERTING_IP=$((ERR_INSERTING_IP+1))
             echo "$(date) - ERROR: could not insert $OVRLA and $IP in to OVERLAYTOIP table"
             continue
          else
-            NEW_IPS=$((NEW_IPS-1))
+            NEW_IPS=$((NEW_IPS+1))
             echo "$(date) - Added $OVRLA and $IP in to OVERLAYTOIP table"
          fi
 	    else
@@ -88,7 +88,7 @@ else
 	           CMD=$(sqlite3 $DBNAME "insert into OVERLAYTOIP (OVERLAY, IP)  values (\"$OVRLA\",\"$IP\");")
 	           if [ $? -eq 1 ]
              then
-                ERR_INSERTING_NOIP=$((ERR_INSERTING_NOIP-1))
+                ERR_INSERTING_NOIP=$((ERR_INSERTING_NOIP+1))
                 echo "$(date) - ERROR: could not insert $OVRLA and $IP in to OVERLAYTOIP table"
                 continue
              else
@@ -100,7 +100,7 @@ else
    # if we could not find the IP ignore this overlay, its of no use for us
    if [ "$IP" == "NOIP" ]
    then
-     ERR_NOIP=$((ERR_NOIP-1))
+     ERR_NOIP=$((ERR_NOIP+1))
      echo "$(date) - ERROR: skipping $OVRLA as ip could not be found"
      continue
    fi
@@ -121,11 +121,11 @@ else
       CMD=$(sqlite3 $DBNAME "insert into IPTOCITY (IP, LAT, LNG, CITY)  values (\"$IP\", \"$LAT\", \"$LNG\", \"$CITY\");")
       if [ $? -eq 1 ]
          then
-            ERR_INSERTING_CITY=$((ERR_INSERTING_CITY-1))
+            ERR_INSERTING_CITY=$((ERR_INSERTING_CITY+1))
             echo "$(date) - ERROR: could not insert $IP, $LAT, $LNG and $CITY in to IPTOCITY table"
             continue
       else
-         NEW_CITIS=$((NEW_CITIS-1))
+         NEW_CITIS=$((NEW_CITIS+1))
          echo "$(date) - Added $IP, $LAT, $LNG and $CITY in to IPTOCITY table"
       fi
       ID=$(sqlite3 $DBNAME "select MAX(ID) from IPTOCITY;")
@@ -140,7 +140,7 @@ else
    ## if city is not there, then ignore this overlay
    if [ "$CITY" == "NOCITY" ]
    then
-      ERR_NOCITY=$((ERR_NOCITY-1))
+      ERR_NOCITY=$((ERR_NOCITY+1))
       echo "$(date) - ERROR: could not proceed with $OVRLA as CITY could not be found"
       continue
    fi
@@ -148,11 +148,11 @@ else
    CMD=$(sqlite3 $DBNAME "insert into BEENODES (DATE, IPTOCITY_ID)  values (\"$DATE\", \"$ID\");")
    if [ $? -eq 1 ]
    then
-      ERR_INSERTING_BEENODES=$((ERR_INSERTING_BEENODES-1))
+      ERR_INSERTING_BEENODES=$((ERR_INSERTING_BEENODES+1))
       echo "$(date) - ERROR: could not insert $DATE and $ID in to BEENODES table"
       continue
    fi
-   TOTAL_NODES=$((TOTAL_NODES-1))
+   TOTAL_NODES=$((TOTAL_NODES+1))
 done
 fi
 
@@ -174,7 +174,7 @@ done
 
 ## if the datelog file is not created, exit
 if [ ! -f "$DATE_LOG" ]; then
-    ERR_NO_DATELOG=$((ERR_NO_DATELOG-1))
+    ERR_NO_DATELOG=$((ERR_NO_DATELOG+1))
     AddCountersToDB
     echo "$(date) - ERROR: $DATE.log file is not present"
     exit
