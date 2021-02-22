@@ -34,8 +34,9 @@ else
    do
    ## Get the IP for the overlay from DB
    IP=$(sqlite3 $DBNAME "select IP from OVERLAYTOIP where OVERLAY=\"$OVRLA\";")
-   if [ -z "$IP" ]
+   if [ -z "$IP" ] || [ "$IP" == "NOIP" ]
    then
+     ORIGINAL_IP=$IP
       ## If not in the DB, get it from the logs
       IP=$(grep $OVRLA $CRAWLER_LOGS | grep "successfully connected to peer" | grep ip4 | tail -n1 |cut -d "/" -f3)
       if [ ! -z "$IP" ]
@@ -50,18 +51,35 @@ else
             echo "`date` - Added $OVRLA and $IP in to OVERLAYTOIP table"
          fi
 	    else
-	       IP="NOIP"
-	       CMD=$(sqlite3 $DBNAME "insert into OVERLAYTOIP (OVERLAY, IP)  values (\"$OVRLA\",\"$IP\");")
-	       if [ $? -eq 1 ]
+	       ## see if the IP is not reachable from crawler
+	       IP=$(grep $OVRLA $CRAWLER_LOGS | grep "peer not reachable from kademlia " | grep ip4 | tail -n1 |cut -d "/" -f3)
+         if [ ! -z "$IP" ]
          then
-            echo "`date` - ERROR: could not insert $OVRLA and $IP in to OVERLAYTOIP table"
-            continue
+            ## insert the harvested IP in to DB for future use
+            CMD=$(sqlite3 $DBNAME "insert into OVERLAYTOIP (OVERLAY, IP)  values (\"$OVRLA\",\"$IP\");")
+            if [ $? -eq 1 ]
+            then
+               echo "`date` - ERROR: could not insert $OVRLA and $IP in to OVERLAYTOIP table"
+               continue
+            else
+               echo "`date` - Added $OVRLA and $IP in to OVERLAYTOIP table"
+            fi
          else
-            echo "`date` - Added $OVRLA and $IP in to OVERLAYTOIP table"
+            if [ "$ORIGINAL_IP" != "NOIP" ]
+            then
+	             IP="NOIP"
+	             CMD=$(sqlite3 $DBNAME "insert into OVERLAYTOIP (OVERLAY, IP)  values (\"$OVRLA\",\"$IP\");")
+	             if [ $? -eq 1 ]
+               then
+                  echo "`date` - ERROR: could not insert $OVRLA and $IP in to OVERLAYTOIP table"
+                  continue
+               else
+                  echo "`date` - Added $OVRLA and $IP in to OVERLAYTOIP table"
+               fi
+            fi
          fi
       fi
    fi
-
    # if we could not find the IP ignore this overlay, its of no use for us
    if [ "$IP" == "NOIP" ]
    then
