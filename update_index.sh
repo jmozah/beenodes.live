@@ -1,11 +1,18 @@
 #!/bin/bash
 
+RUNNING=$(ps -aef | grep update_index.sh | grep -v grep)
+if [ -z "$RUNNING" ]
+then
+  echo "update script is already running..."
+  exit
+fi
+
 BEENODES_HOME="/root/beenodes.live"
 cd $BEENODES_HOME || exit
 
 PORT="9786"
 CRAWLER_LOGS=/root/logs/crawler.log
-CRAWLER="http://45.77.235.53:1635"
+CRAWLER="http://localhost:1635"
 DATE=$(date '+%Y-%m-%d-%H')
 PWD=`pwd`
 DBNAME="$PWD/beenodeslive.db"
@@ -43,6 +50,8 @@ AddCountersToDB () {
 }
 
 
+CRAWLER_OVERLAY=$(curl -X GET http://localhost:1635/topology | jq  '.baseAddr' | tr -d "\"")
+
 ROWS=$(sqlite3 $DBNAME "select * from BEENODES where DATE=\"$DATE\" LIMIT 1;")
 if [ $? -eq 1 ]
 then
@@ -59,13 +68,22 @@ else
    for OVRLA in $LIVE_OVERLAYS
    do
    TOTAL_OVERLAYS=$((TOTAL_OVERLAYS+1))
+   if [ "$OVRLA" == "$CRAWLER_OVERLAY" ]
+   then
+      continue
+   fi
 
    ## Get the IP for the overlay from DB
    IP=$(sqlite3 $DBNAME "select IP from OVERLAYTOIP where OVERLAY=\"$OVRLA\";")
-   if [ -z "$IP" ] || [ "$IP" == "NOIP" ]
+   if [ "$IP" == "NOIP" ]
+   then
+      CMD=$(sqlite3 $DBNAME "delete from OVERLAYTOIP where OVERLAY=\"$OVRLA\";")
+      echo "deleted overlay with $OVRLA as it has NOIP"
+      continue
+   fi
+   if [ -z "$IP" ]
    then
       NEW_OVERLAYS=$((NEW_OVERLAYS+1))
-      ORIGINAL_IP=$IP
 
       ## If not in the DB or has "NOIP", check the logs to see if we can harvest the ip from there
       IP=$(grep $OVRLA $CRAWLER_LOGS | grep "successfully connected to peer\|peer not reachable from kademlia" | grep ip4 | tail -n1 |cut -d "/" -f3)
@@ -87,32 +105,14 @@ else
             NEW_IPS=$((NEW_IPS+1))
             echo "$(date) - Added $OVRLA and $IP in to OVERLAYTOIP table"
          fi
-	    else
-	        ## could not find the IP in DB or in logs
-	        ## if the original IP is NOIP, do not insert again
-	        if [ "$ORIGINAL_IP" != "NOIP" ]
-	        then
-	           IP="NOIP"
-	           CMD=$(sqlite3 $DBNAME "insert into OVERLAYTOIP (OVERLAY, IP)  values (\"$OVRLA\",\"$IP\");")
-	           if [ $? -eq 1 ]
-             then
-                ERR_INSERTING_NOIP=$((ERR_INSERTING_NOIP+1))
-                echo "$(date) - ERROR: could not insert $OVRLA and $IP in to OVERLAYTOIP table"
-                continue
-             else
-                echo "$(date) - Added $OVRLA and $IP in to OVERLAYTOIP table"
-             fi
-          fi
+      else
+         # if we could not find the IP ignore this overlay, its of no use for us
+         ERR_NOIP=$((ERR_NOIP+1))
+         echo "$(date) - ERROR: skipping $OVRLA as ip could not be found"
+         continue
       fi
    fi
 
-   # if we could not find the IP ignore this overlay, its of no use for us
-   if [ "$IP" == "NOIP" ]
-   then
-     ERR_NOIP=$((ERR_NOIP+1))
-     echo "$(date) - ERROR: skipping $OVRLA as ip could not be found"
-     continue
-   fi
 
    ## Now get the City for the IP
    CITYSTR=$(sqlite3 $DBNAME "select ID, LAT, LNG, CITY from IPTOCITY where IP=\"$IP\";")
