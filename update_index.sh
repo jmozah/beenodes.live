@@ -1,7 +1,7 @@
 #!/bin/bash
 
 RUNNING=$(ps -aef | grep update_index.sh | grep -v grep)
-if [ -z "$RUNNING" ]
+if [ ! -z "$RUNNING" ]
 then
   echo "update script is already running..."
   exit
@@ -51,7 +51,6 @@ AddCountersToDB () {
 
 
 CRAWLER_OVERLAY=$(curl -X GET http://localhost:1635/topology | jq  '.baseAddr' | tr -d "\"")
-
 ROWS=$(sqlite3 $DBNAME "select * from BEENODES where DATE=\"$DATE\" LIMIT 1;")
 if [ $? -eq 1 ]
 then
@@ -70,17 +69,12 @@ else
    TOTAL_OVERLAYS=$((TOTAL_OVERLAYS+1))
    if [ "$OVRLA" == "$CRAWLER_OVERLAY" ]
    then
+      echo "Ignoring crawler overlay $OVRLA"
       continue
    fi
 
    ## Get the IP for the overlay from DB
    IP=$(sqlite3 $DBNAME "select IP from OVERLAYTOIP where OVERLAY=\"$OVRLA\";")
-   if [ "$IP" == "NOIP" ]
-   then
-      CMD=$(sqlite3 $DBNAME "delete from OVERLAYTOIP where OVERLAY=\"$OVRLA\";")
-      echo "deleted overlay with $OVRLA as it has NOIP"
-      continue
-   fi
    if [ -z "$IP" ]
    then
       NEW_OVERLAYS=$((NEW_OVERLAYS+1))
