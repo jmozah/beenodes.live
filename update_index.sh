@@ -1,9 +1,10 @@
 #!/bin/bash
 
-RUNNING=$(ps -aef | grep update_index.sh | grep -v grep)
+echo "$(date) - starting update_index with pid $$"
+RUNNING=$(ps -aef | grep update_index.log | grep -v grep )
 if [ ! -z "$RUNNING" ]
 then
-  echo "update script is already running..."
+  echo "$(date) - update script is already running..."
   exit
 fi
 
@@ -204,5 +205,5 @@ kill -9 "$(ps -aef | grep http.server | grep -v grep  | tr -s " "  | cut -d " " 
 echo "$(date) - Starting python server with new html file $NEW_HTML"
 python3 -m  http.server $PORT >> /root/beenodes.log 2>&1 &
 systemctl restart nginx
-
+echo "$(date) - ending update_index with pid $$"
 
