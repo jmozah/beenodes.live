@@ -2,7 +2,7 @@
 
 echo "$(date) - starting update_index with pid $$"
 RUNNING=$(ps -aef | grep update_index | grep -v grep )
-if [ ! -z "$RUNNING" ]
+if [ -z "$RUNNING" ]
 then
   echo "$(date) - update script is already running..."
   exit
