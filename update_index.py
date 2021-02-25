@@ -1,11 +1,10 @@
 import os
 import sys
 import logging
-import datetime
 import sqlite3
 import requests
 import subprocess
-
+from datetime import datetime, timedelta
 
 total_peers = 0
 c_peers = 0
@@ -47,7 +46,8 @@ def getPeersFromCrawler(url):
         for peer in connected_peers:
             active_overlays[peer] = ''
             total_peers += 1
-    logging.info('got {} connected peers and {} disconnected peers from crawler'.format(str(len(active_overlays)), str(len(inactive_overlays))))
+    logging.info('got {} connected peers and {} disconnected peers from crawler'.format(str(len(active_overlays)),
+                                                                                        str(len(inactive_overlays))))
     return active_overlays, inactive_overlays
 
 
@@ -88,11 +88,11 @@ def getIP(sql_conn, peer, log_peers_and_ip):
     return ip
 
 
-def getIPFromLog(log_date_str, crawler_log):
+def getIPFromLog(log_today_str, log_yesterday_str, crawler_log):
     log_peers_and_ip = dict()
-    logging.info('harvesting ips from log for {}'.format(log_date_str))
-    commandStr = 'grep "successfully connected to peer\|peer not reachable from kademlia" {} | grep {} |  grep ip4 | tr -s " " | cut -d " " -f8,10 | tr -d " " | tr -d "," | cut -d "/" -f1,3 | sort | uniq'.format(
-        crawler_log, log_date_str)
+    logging.info('harvesting ips from log for {} and {}'.format(log_today_str, log_yesterday_str))
+    commandStr = 'grep "successfully connected to peer\|peer not reachable from kademlia" {} | grep "{}\|{}" |  grep ip4 | tr -s " " | cut -d " " -f8,10 | tr -d " " | tr -d "," | cut -d "/" -f1,3 | sort | uniq'.format(
+        crawler_log, log_today_str, log_yesterday_str)
     result = subprocess.check_output(commandStr, shell=True)
     lines = result.decode('utf-8')
     if not lines:
@@ -105,6 +105,7 @@ def getIPFromLog(log_date_str, crawler_log):
             log_peers_and_ip[cols[0]] = cols[1]
     logging.info('harvested {} ips from log'.format(str(len(log_peers_and_ip))))
     return log_peers_and_ip
+
 
 def getCity(sql_conn, ip):
     global new_citys
@@ -175,7 +176,9 @@ def insertCityCountsToTable(sql_conn, city_count, date_str):
         if not city or city == 'null':
             continue
         try:
-            sql_conn.execute('insert into CITYBATCH (DATE, LAT, LNG, CITY, C_COUNT, D_COUNT)  values (?, ?, ?, ?, ?, ?)', (date_str, la, ln, city, c1, d1))
+            sql_conn.execute(
+                'insert into CITYBATCH (DATE, LAT, LNG, CITY, C_COUNT, D_COUNT)  values (?, ?, ?, ?, ?, ?)',
+                (date_str, la, ln, city, c1, d1))
             sql_conn.commit()
             total_rows_in_this_batch += 1
         except sqlite3.OperationalError as e:
@@ -184,10 +187,14 @@ def insertCityCountsToTable(sql_conn, city_count, date_str):
             return
     logging.info('added {} rows in this batch'.format(str(total_rows_in_this_batch)))
 
+
 def addCounters(sql_conn, date_str):
     try:
-        sql_conn.execute('insert into COUNTERS (DATE, TOTAL_PEERS, CONNECTED_PEERS, DISCONNECTED_PEERS, NEW_PEERS, NEW_IPS, NEW_CITIS, TOTAL_ROWS_IN_BATCH, ERR_SELECTING_IP, ERR_INSERTING_IP, ERR_NOIP, ERR_SELECTING_CITY, ERR_INSERTING_CITY, ERR_NOCITY, ERR_INSERTING_CITYBATCH)  values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                         (date_str, total_peers, c_peers, d_peers, new_peers, new_ips, new_citys, total_rows_in_this_batch, err_selecting_ip, err_inserting_ip, err_no_ip, err_selecting_city, err_inserting_city, err_no_city, err_inserting_citybatch))
+        sql_conn.execute(
+            'insert into COUNTERS (DATE, TOTAL_PEERS, CONNECTED_PEERS, DISCONNECTED_PEERS, NEW_PEERS, NEW_IPS, NEW_CITIS, TOTAL_ROWS_IN_BATCH, ERR_SELECTING_IP, ERR_INSERTING_IP, ERR_NOIP, ERR_SELECTING_CITY, ERR_INSERTING_CITY, ERR_NOCITY, ERR_INSERTING_CITYBATCH)  values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (date_str, total_peers, c_peers, d_peers, new_peers, new_ips, new_citys, total_rows_in_this_batch,
+             err_selecting_ip, err_inserting_ip, err_no_ip, err_selecting_city, err_inserting_city, err_no_city,
+             err_inserting_citybatch))
         sql_conn.commit()
         logging.info('date                     = {} '.format(date_str))
         logging.info('total_peers              = {} '.format(str(total_peers)))
@@ -208,7 +215,6 @@ def addCounters(sql_conn, date_str):
         logging.error('error inserting into COUNTERS: {}'.format(e))
 
 
-
 def main():
     global c_peers
     global d_peers
@@ -227,9 +233,11 @@ def main():
         logging.error('python3 update_index.py <dbFileWithPath> <crawlerLogs> <crawlerDebugAPIUrl>')
         sys.exit()
 
-    dt = datetime.datetime.now()
-    date_str = dt.strftime("%Y-%m-%d-%H")
-    log_date_str = dt.strftime("%Y-%m-%dT")
+    today = datetime.datetime.now()
+    yesterday = datetime.now() - timedelta(1)
+    date_str = today.strftime("%Y-%m-%d-%H")
+    log_today_str = today.strftime("%Y-%m-%dT")
+    log_yesterday_str = yesterday.strftime("%Y-%m-%dT")
     logging.info('Starting update_index for {}'.format(date_str))
 
     # check if the db is present
@@ -249,9 +257,7 @@ def main():
         logging.error("this hour is already processed")
         sys.exit()
 
-
-    log_peers_and_ip = getIPFromLog(log_date_str, crawler_logs)
-
+    log_peers_and_ip = getIPFromLog(log_today_str, log_yesterday_str, crawler_logs)
 
     # get the connected and disconnected peers from the crawler
     connected_peers, disconnected_peers = getPeersFromCrawler(url)
@@ -291,6 +297,7 @@ def main():
 
     # add the counters
     addCounters(sql_conn, date_str)
+
 
 if __name__ == "__main__":
     main()
