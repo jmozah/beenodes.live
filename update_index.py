@@ -233,7 +233,7 @@ def main():
         logging.error('python3 update_index.py <dbFileWithPath> <crawlerLogs> <crawlerDebugAPIUrl>')
         sys.exit()
 
-    today = datetime.datetime.now()
+    today = datetime.now()
     yesterday = datetime.now() - timedelta(1)
     date_str = today.strftime("%Y-%m-%d-%H")
     log_today_str = today.strftime("%Y-%m-%dT")
