@@ -254,7 +254,7 @@ def getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port):
 def checkIfAlive(sql_conn, peer, ip, port, not_response_count):
     if not_response_count >= 3:
         return False, not_response_count
-    url = 'http://' + ip + ':' + port
+    url = 'http://' + ip + ':' + str(port)
     not_response_count += 1
     try:
         # increment the  retry counter
