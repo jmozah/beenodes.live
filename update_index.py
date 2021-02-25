@@ -319,51 +319,64 @@ def main():
         logging.error("this hour is already processed")
         sys.exit()
 
-    log_peers_ip_port = getIPPortFromLog(log_today_str, log_yesterday_str, crawler_logs)
+    # check if lock is open, then start processing
+    pid = str(os.getpid())
+    pidfile = "/tmp/beenodes.pid"
+    if os.path.isfile(pidfile):
+        print (" {} already exists, exiting".format(pidfile))
+        sys.exit()
 
-    # get the connected and disconnected peers from the crawler
-    connected_peers, disconnected_peers = getPeersFromCrawler(url)
+    open(pidfile, "w+").write(pid)
+    try:
+        log_peers_ip_port = getIPPortFromLog(log_today_str, log_yesterday_str, crawler_logs)
 
-    # harvest IP for the connected overlays
-    for peer in connected_peers:
-        c1_peers += 1
-        logging.info('processing connected peer {}'.format(peer))
-        ip, port, not_response_count, lat, lng, city = getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port)
-        if not ip:
-            logging.error('could not proceed with {} as IP could not be found'.format(peer))
-            continue
-        if city == 'NOCITY':
-            logging.error('could not proceed with {} as CITY could not be found'.format(peer))
-            continue
-        addToCityCount(city_counts, city, lat, lng, 1, 0, 0)
+        # get the connected and disconnected peers from the crawler
+        connected_peers, disconnected_peers = getPeersFromCrawler(url)
 
-    # harvest IP for the disconnected overlays
-    for peer in disconnected_peers:
-        logging.info('processing disconnected peer {}'.format(peer))
-        ip, port, not_response_count, lat, lng, city = getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port)
-        if not ip:
-            logging.error('could not proceed with {} as IP could not be found'.format(peer))
-            continue
-        if city == 'NOCITY':
-            logging.error('could not proceed with {} as CITY could not be found'.format(peer))
-            continue
-        alive, retry_count = checkIfAlive(sql_conn, peer, ip, port, not_response_count)
-        if alive:
-            logging.info('found {} be connected by pinging default port'.format(ip))
-            c2_peers += 1
+        # harvest IP for the connected overlays
+        for peer in connected_peers:
+            c1_peers += 1
+            logging.info('processing connected peer {}'.format(peer))
+            ip, port, not_response_count, lat, lng, city = getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port)
+            if not ip:
+                logging.error('could not proceed with {} as IP could not be found'.format(peer))
+                continue
+            if city == 'NOCITY':
+                logging.error('could not proceed with {} as CITY could not be found'.format(peer))
+                continue
             addToCityCount(city_counts, city, lat, lng, 1, 0, 0)
-        else:
-            d_peers += 1
-            if retry_count < 3:
-                addToCityCount(city_counts, city, lat, lng, 0, 1, 0)
+
+        # harvest IP for the disconnected overlays
+        for peer in disconnected_peers:
+            logging.info('processing disconnected peer {}'.format(peer))
+            ip, port, not_response_count, lat, lng, city = getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port)
+            if not ip:
+                logging.error('could not proceed with {} as IP could not be found'.format(peer))
+                continue
+            if city == 'NOCITY':
+                logging.error('could not proceed with {} as CITY could not be found'.format(peer))
+                continue
+            alive, retry_count = checkIfAlive(sql_conn, peer, ip, port, not_response_count)
+            if alive:
+                logging.info('found {} be connected by pinging default port'.format(ip))
+                c2_peers += 1
+                addToCityCount(city_counts, city, lat, lng, 1, 0, 0)
             else:
-                addToCityCount(city_counts, city, lat, lng, 0, 0, 1)
+                d_peers += 1
+                if retry_count < 3:
+                    addToCityCount(city_counts, city, lat, lng, 0, 1, 0)
+                else:
+                    addToCityCount(city_counts, city, lat, lng, 0, 0, 1)
 
-    # Insert the batch data in to CITYBATCH table
-    insertCityCountsToTable(sql_conn, city_counts, date_str)
+        # Insert the batch data in to CITYBATCH table
+        insertCityCountsToTable(sql_conn, city_counts, date_str)
 
-    # add the counters
-    addCounters(sql_conn, date_str)
+        # add the counters
+        addCounters(sql_conn, date_str)
+    finally:
+        os.unlink(pidfile)
+
+
 
 
 if __name__ == "__main__":
