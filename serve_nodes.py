@@ -46,14 +46,15 @@ def getCityList(date_str):
     if date_str in data_dic:
         city_list = data_dic[date_str]
     else:
-        cursor = sql_conn.execute('select CITY, LAT, LNG, C_COUNT, D_COUNT from CITYBATCH where DATE = ?',(date_str,))
+        cursor = sql_conn.execute('select CITY, LAT, LNG, GREEN_COUNT, ORANGE_COUNT, RED_COUNT from CITYBATCH where DATE = ?',(date_str,))
         for row in cursor:
             city = row[0]
             lat = row[1]
             lng = row[2]
-            c_count = row[3]
-            d_count = row[4]
-            line = "'{}' : [ {}, {}, {}, {} ],".format(city, lat, lng, c_count, d_count)
+            green_count = row[3]
+            orange_count = row[4]
+            red_count = row[5]
+            line = "'{}' : [ {}, {}, {}, {} ],".format(city, lat, lng, green_count, orange_count, red_count)
             line = line.rstrip('\n')
             city_list[line] = ''
     return city_list

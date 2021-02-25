@@ -15,11 +15,13 @@ conn.execute('''CREATE TABLE IPTOCITY
 conn.execute('''CREATE INDEX iptocity_ip on IPTOCITY(IP)''')
 print("Table IPTOCITY created successfully")
 
-conn.execute('''CREATE TABLE OVERLAYTOIP
+conn.execute('''CREATE TABLE OVERLAYIPPORT
          (OVERLAY  TEXT  PRIMARY KEY,
           IP           TEXT    NOT NULL,
+          PORT         INTEGER NOT NULL,  
+          NOT_RESPONDING  INTEGER NOT NULL,
           Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);''')
-print("Table OVERLAYTOIP created successfully")
+print("Table OVERLAYIPPORT created successfully")
 
 conn.execute('''CREATE TABLE CITYBATCH
          (ID INTEGER PRIMARY KEY,
@@ -27,8 +29,9 @@ conn.execute('''CREATE TABLE CITYBATCH
           LAT             REAL     NOT NULL,
           LNG             REAL     NOT NULL,
           CITY            TEXT     NOT NULL,
-          C_COUNT         INTEGER  NOT NULL,
-          D_COUNT         INTEGER  NOT NULL,
+          GREEN_COUNT     INTEGER  NOT NULL,
+          ORANGE_COUNT    INTEGER  NOT NULL,
+          RED_COUNT       INTEGER  NOT NULL,
           Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);''')
 conn.execute('''CREATE INDEX citybatch_date on CITYBATCH(DATE)''')
 print("Table CITYBATCH created successfully")
@@ -38,6 +41,7 @@ conn.execute('''CREATE TABLE COUNTERS
          (DATE                  TEXT PRIMARY KEY,         
           TOTAL_PEERS           INTEGER     NOT NULL,
           CONNECTED_PEERS       INTEGER     NOT NULL,
+          CONNECTED_FOUND_PEERS INTEGER     NOT NULL,
           DISCONNECTED_PEERS    INTEGER     NOT NULL,
           NEW_PEERS             INTEGER     NOT NULL,
           NEW_IPS               INTEGER     NOT NULL,

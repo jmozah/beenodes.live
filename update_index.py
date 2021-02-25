@@ -7,7 +7,8 @@ import subprocess
 from datetime import datetime, timedelta
 
 total_peers = 0
-c_peers = 0
+c1_peers = 0
+c2_peers = 0
 d_peers = 0
 new_peers = 0
 new_ips = 0
@@ -51,60 +52,85 @@ def getPeersFromCrawler(url):
     return active_overlays, inactive_overlays
 
 
-def getIP(sql_conn, peer, log_peers_and_ip):
+def getIPAndPortAndNotResponseCount(sql_conn, peer, log_peers_ip_port):
     global new_peers
     global new_ips
     global err_selecting_ip
     global err_inserting_ip
     global err_no_ip
     ip = ''
+    port = 0
+    not_response_count = -1
     try:
-        cursor = sql_conn.execute('select IP from OVERLAYTOIP where OVERLAY = ?  limit 1', (peer,))
+        cursor = sql_conn.execute('select IP, PORT, NOT_RESPONDING from OVERLAYIPPORT where OVERLAY = ?  limit 1', (peer,))
         for row in cursor:
             ip = row[0].rstrip('\n')
-        if not ip:
-            sql_conn.execute('delete from OVERLAYTOIP where OVERLAY = ?', (peer,))
-            sql_conn.commit()
-            logging.error('deleting empty peer {}'.format(peer))
+            port = row[1]
+            not_response_count = row[2]
+            if not ip:
+                sql_conn.execute('delete from OVERLAYIPPORT where OVERLAY = ?', (peer,))
+                sql_conn.commit()
+                logging.error('deleting empty peer {}'.format(peer))
     except sqlite3.OperationalError as e:
-        logging.error('error getting IP from OVERLAYTOIP for peer {}: {}'.format(peer, e))
+        logging.error('error getting IP from OVERLAYIPPORT for peer {}: {}'.format(peer, e))
         err_selecting_ip += 1
     if not ip:
         new_peers += 1
-        if ip in log_peers_and_ip:
-            ip = log_peers_and_ip[peer]
+        if peer in log_peers_ip_port:
+            (ip, port) = log_peers_ip_port[peer]
             if ip == "127.0.0.1":
                 ip = ''
+                port = 0
+                not_response_count = -1
             else:
                 try:
-                    sql_conn.execute('insert into OVERLAYTOIP (OVERLAY, IP)  values(?, ?)', (peer, ip))
+                    sql_conn.execute('insert into OVERLAYIPPORT (OVERLAY, IP, PORT, NOT_RESPONDING)  values(?, ?, ?, ?)', (peer, ip, port, not_response_count))
                     sql_conn.commit()
                     new_ips += 1
                 except sqlite3.OperationalError as e:
-                    logging.error('error inserting IP {} into OVERLAYTOIP for peer {}: {}'.format(ip, peer, e))
+                    logging.error('error inserting IP {} into OVERLAYIPPORT for peer {}: {}'.format(ip, peer, e))
                     err_inserting_ip += 1
     if not ip:
         err_no_ip += 1
-    return ip
+    return ip, port, not_response_count
 
 
-def getIPFromLog(log_today_str, log_yesterday_str, crawler_log):
-    log_peers_and_ip = dict()
-    logging.info('harvesting ips from log for {} and {}'.format(log_today_str, log_yesterday_str))
-    commandStr = 'grep "successfully connected to peer\|peer not reachable from kademlia" {} | grep "{}\|{}" |  grep ip4 | tr -s " " | cut -d " " -f8,10 | tr -d " " | tr -d "," | cut -d "/" -f1,3 | sort | uniq'.format(
+def getIPPortFromLog(log_today_str, log_yesterday_str, crawler_log):
+    log_peers_ip_port = dict()
+
+    logging.info('harvesting successfully connected ips from log for {} and {}'.format(log_today_str, log_yesterday_str))
+    commandStr = 'grep "successfully connected to peer" {} | grep "{}\|{}" |  grep ip4 | cut -d " " -f8,10 |tr -d " " | tr -d "," | cut -d "/" -f1,3,5 | sort | uniq'.format(
         crawler_log, log_today_str, log_yesterday_str)
     result = subprocess.check_output(commandStr, shell=True)
     lines = result.decode('utf-8')
     if not lines:
-        logging.info('could not harvest any ips from log')
-        return log_peers_and_ip
-    rows = lines.split('\n')
-    for line in rows:
-        cols = line.split("/")
-        if len(cols) == 2:
-            log_peers_and_ip[cols[0]] = cols[1]
-    logging.info('harvested {} ips from log'.format(str(len(log_peers_and_ip))))
-    return log_peers_and_ip
+        logging.info('could not harvest any ips from success log')
+    else:
+        rows = lines.split('\n')
+        for line in rows:
+            cols = line.split("/")
+            if len(cols) == 3:
+                log_peers_ip_port[cols[0]] = (cols[1], cols[2])
+        logging.info('harvested {} ips from successfully connected log'.format(str(len(log_peers_ip_port))))
+
+    logging.info(
+        'harvesting not reachable ips from log for {} and {}'.format(log_today_str, log_yesterday_str))
+    commandStr = 'grep "peer not reachable from kademlia" {} | grep "{}\|{}" | grep ip4 | cut -d " " -f9,11 | tr -d " " | tr  "," "/" | cut -d "/" -f3,5,8 | sort | uniq'.format(
+        crawler_log, log_today_str, log_yesterday_str)
+    result = subprocess.check_output(commandStr, shell=True)
+    lines = result.decode('utf-8')
+    if not lines:
+        logging.info('could not harvest any ips from not reachable log')
+        return log_peers_ip_port
+    else:
+        rows = lines.split('\n')
+        for line in rows:
+            cols = line.split("/")
+            if len(cols) == 3:
+                log_peers_ip_port[cols[2]] = (cols[0], cols[1])
+        logging.info('harvested {} ips from not connected log'.format(str(len(log_peers_ip_port))))
+
+    return log_peers_ip_port
 
 
 def getCity(sql_conn, ip):
@@ -115,6 +141,8 @@ def getCity(sql_conn, ip):
     lat = ''
     lng = ''
     city = ''
+    if not ip:
+        return lat, lng, city
     try:
         cursor = sql_conn.execute('select LAT, LNG, CITY from IPTOCITY where IP = ? limit 1', (ip,))
         for row in cursor:
@@ -158,27 +186,28 @@ def checkIfHourDone(sql_conn, date_str):
     return id
 
 
-def addToCityCount(city_count, city, lat, lng, c_count, d_count):
+def addToCityCount(city_count, city, lat, lng, green_count, orange_count, red_count):
     if city in city_count.keys():
-        la, ln, c1, d1 = city_count[city]
-        c1 = c1 + c_count
-        d1 = d1 + d_count
-        city_count[city] = la, ln, c1, d1
+        la, ln, green, orange, red = city_count[city]
+        green = green + green_count
+        orange = orange + orange_count
+        red = red + red_count
+        city_count[city] = la, ln, green, orange, red
     else:
-        city_count[city] = lat, lng, c_count, d_count
+        city_count[city] = lat, lng, green_count, orange_count, red_count
 
 
 def insertCityCountsToTable(sql_conn, city_count, date_str):
     global total_rows_in_this_batch
     global err_inserting_citybatch
     for city in city_count:
-        la, ln, c1, d1 = city_count[city]
+        la, ln, green_count, orange_count, red_count = city_count[city]
         if not city or city == 'null':
             continue
         try:
             sql_conn.execute(
-                'insert into CITYBATCH (DATE, LAT, LNG, CITY, C_COUNT, D_COUNT)  values (?, ?, ?, ?, ?, ?)',
-                (date_str, la, ln, city, c1, d1))
+                'insert into CITYBATCH (DATE, LAT, LNG, CITY, GREEN_COUNT, ORANGE_COUNT, RED_COUNT)  values (?, ?, ?, ?, ?, ?, ?)',
+                (date_str, la, ln, city, green_count, orange_count, red_count))
             sql_conn.commit()
             total_rows_in_this_batch += 1
         except sqlite3.OperationalError as e:
@@ -191,14 +220,15 @@ def insertCityCountsToTable(sql_conn, city_count, date_str):
 def addCounters(sql_conn, date_str):
     try:
         sql_conn.execute(
-            'insert into COUNTERS (DATE, TOTAL_PEERS, CONNECTED_PEERS, DISCONNECTED_PEERS, NEW_PEERS, NEW_IPS, NEW_CITIS, TOTAL_ROWS_IN_BATCH, ERR_SELECTING_IP, ERR_INSERTING_IP, ERR_NOIP, ERR_SELECTING_CITY, ERR_INSERTING_CITY, ERR_NOCITY, ERR_INSERTING_CITYBATCH)  values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            (date_str, total_peers, c_peers, d_peers, new_peers, new_ips, new_citys, total_rows_in_this_batch,
+            'insert into COUNTERS (DATE, TOTAL_PEERS, CONNECTED_PEERS, CONNECTED_FOUND_PEERS, DISCONNECTED_PEERS, NEW_PEERS, NEW_IPS, NEW_CITIS, TOTAL_ROWS_IN_BATCH, ERR_SELECTING_IP, ERR_INSERTING_IP, ERR_NOIP, ERR_SELECTING_CITY, ERR_INSERTING_CITY, ERR_NOCITY, ERR_INSERTING_CITYBATCH)  values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (date_str, total_peers, c1_peers,c2_peers, d_peers, new_peers, new_ips, new_citys, total_rows_in_this_batch,
              err_selecting_ip, err_inserting_ip, err_no_ip, err_selecting_city, err_inserting_city, err_no_city,
              err_inserting_citybatch))
         sql_conn.commit()
         logging.info('date                     = {} '.format(date_str))
         logging.info('total_peers              = {} '.format(str(total_peers)))
-        logging.info('connected_peers          = {} '.format(str(c_peers)))
+        logging.info('connected_peers          = {} '.format(str(c1_peers)))
+        logging.info('connected_peers (ping)   = {} '.format(str(c2_peers)))
         logging.info('disconnected_peers       = {} '.format(str(d_peers)))
         logging.info('new_peers                = {} '.format(str(new_peers)))
         logging.info('new_ips                  = {} '.format(str(new_ips)))
@@ -215,8 +245,40 @@ def addCounters(sql_conn, date_str):
         logging.error('error inserting into COUNTERS: {}'.format(e))
 
 
+def getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port):
+    ip, port, not_response_count = getIPAndPortAndNotResponseCount(sql_conn, peer, log_peers_ip_port)
+    lat, lng, city = getCity(sql_conn, ip)
+    return ip, port, not_response_count, lat, lng, city
+
+
+def checkIfAlive(sql_conn, peer, ip, port, not_response_count):
+    if not_response_count >= 3:
+        return False, not_response_count
+    url = 'http://' + ip + ':' + port
+    not_response_count += 1
+    try:
+        # increment the  retry counter
+        sql_conn.execute('update OVERLAYIPPORT SET NOT_RESPONDING = ? WHERE OVERLAY = ?',(not_response_count, peer,))
+        sql_conn.commit()
+
+        # Ping
+        response = requests.get(url, verify=False, timeout=(2, 2))
+        line = response.content.decode('utf-8')
+        if line == '/multistream/1.0.0':
+            # if the peer responds, then reset the retry counter
+            not_response_count = -1
+            sql_conn.execute('update OVERLAYIPPORT SET NOT_RESPONDING = ? WHERE OVERLAY = ?', (not_response_count, peer,))
+            sql_conn.commit()
+            return True, not_response_count
+        else:
+            return False, not_response_count
+    except:
+        return False, not_response_count
+
+
 def main():
-    global c_peers
+    global c1_peers
+    global c2_peers
     global d_peers
     db_file = ''
     crawler_logs = ''
@@ -257,40 +319,45 @@ def main():
         logging.error("this hour is already processed")
         sys.exit()
 
-    log_peers_and_ip = getIPFromLog(log_today_str, log_yesterday_str, crawler_logs)
+    log_peers_ip_port = getIPPortFromLog(log_today_str, log_yesterday_str, crawler_logs)
 
     # get the connected and disconnected peers from the crawler
     connected_peers, disconnected_peers = getPeersFromCrawler(url)
 
     # harvest IP for the connected overlays
     for peer in connected_peers:
+        c1_peers += 1
         logging.info('processing connected peer {}'.format(peer))
-        c_peers += 1
-        ip = getIP(sql_conn, peer, log_peers_and_ip)
+        ip, port, not_response_count, lat, lng, city = getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port)
         if not ip:
             logging.error('could not proceed with {} as IP could not be found'.format(peer))
             continue
-        connected_peers[peer] = ip
-        lat, lng, city = getCity(sql_conn, ip)
         if city == 'NOCITY':
             logging.error('could not proceed with {} as CITY could not be found'.format(peer))
             continue
-        addToCityCount(city_counts, city, lat, lng, 1, 0)
+        addToCityCount(city_counts, city, lat, lng, 1, 0, 0)
 
     # harvest IP for the disconnected overlays
     for peer in disconnected_peers:
-        d_peers += 1
         logging.info('processing disconnected peer {}'.format(peer))
-        ip = getIP(sql_conn, peer, log_peers_and_ip)
+        ip, port, not_response_count, lat, lng, city = getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port)
         if not ip:
             logging.error('could not proceed with {} as IP could not be found'.format(peer))
             continue
-        disconnected_peers[peer] = ip
-        lat, lng, city = getCity(sql_conn, ip)
         if city == 'NOCITY':
             logging.error('could not proceed with {} as CITY could not be found'.format(peer))
             continue
-        addToCityCount(city_counts, city, lat, lng, 0, 1)
+        alive, retry_count = checkIfAlive(sql_conn, peer, ip, port, not_response_count)
+        if alive:
+            logging.info('found {} be connected by pinging default port'.format(ip))
+            c2_peers += 1
+            addToCityCount(city_counts, city, lat, lng, 1, 0, 0)
+        else:
+            d_peers += 1
+            if retry_count < 3:
+                addToCityCount(city_counts, city, lat, lng, 0, 1, 0)
+            else:
+                addToCityCount(city_counts, city, lat, lng, 0, 0, 1)
 
     # Insert the batch data in to CITYBATCH table
     insertCityCountsToTable(sql_conn, city_counts, date_str)
