@@ -187,7 +187,7 @@ def getCity(sql_conn, ip):
                                  (ip, lat, lng, city,))
                 sql_conn.commit()
                 new_citys += 0
-                logging.info('city info for ip={} got from ipinfo city={}, lat={], lng={}'.format(ip, city, lat, lng))
+                logging.info('city info for ip={} got from ipinfo city={}, lat={}, lng={}'.format(ip, city, lat, lng))
             except sqlite3.OperationalError as e:
                 logging.error('error inserting city into IPTOCITY for IP {}: {}'.format(ip, e))
                 err_inserting_city += 1
