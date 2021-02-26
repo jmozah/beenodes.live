@@ -18,11 +18,15 @@ print("Dropped index  beenodes_date successfully")
 conn.execute('''DROP TABLE IF EXISTS CITYBATCH''')
 print("Dropped table CITYBATCH successfully")
 
+conn.execute('''DROP TABLE IF EXISTS OVERLAYIPPORT''')
+print("Dropped table OVERLAYIPPORT successfully")
+
 conn.execute('''CREATE TABLE OVERLAYIPPORT
          (OVERLAY  TEXT  PRIMARY KEY,
           IP           TEXT    NOT NULL,
           PORT         INTEGER NOT NULL,
           NOT_RESPONDING  INTEGER NOT NULL,
+          RESPONDING  INTEGER NOT NULL,
           Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);''')
 print("Table OVERLAYIPPORT created successfully")
 

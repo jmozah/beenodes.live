@@ -6,6 +6,8 @@ import requests
 import subprocess
 from datetime import datetime, timedelta
 
+max_retry_for_failure = 48
+
 total_peers = 0
 c1_peers = 0
 c2_peers = 0
@@ -60,13 +62,15 @@ def getIPAndPortAndNotResponseCount(sql_conn, peer, log_peers_ip_port):
     global err_no_ip
     ip = ''
     port = 0
-    not_response_count = -1
+    not_response_count = 0
+    responding_count = 0
     try:
-        cursor = sql_conn.execute('select IP, PORT, NOT_RESPONDING from OVERLAYIPPORT where OVERLAY = ?  limit 1', (peer,))
+        cursor = sql_conn.execute('select IP, PORT, NOT_RESPONDING, RESPONDING from OVERLAYIPPORT where OVERLAY = ?  limit 1', (peer,))
         for row in cursor:
             ip = row[0].rstrip('\n')
             port = row[1]
             not_response_count = row[2]
+            responding_count = row[3]
             if not ip:
                 sql_conn.execute('delete from OVERLAYIPPORT where OVERLAY = ?', (peer,))
                 sql_conn.commit()
@@ -81,10 +85,11 @@ def getIPAndPortAndNotResponseCount(sql_conn, peer, log_peers_ip_port):
             if ip == "127.0.0.1":
                 ip = ''
                 port = 0
-                not_response_count = -1
+                not_response_count = 0
+                responding_count = 0
             else:
                 try:
-                    sql_conn.execute('insert into OVERLAYIPPORT (OVERLAY, IP, PORT, NOT_RESPONDING)  values(?, ?, ?, ?)', (peer, ip, port, not_response_count))
+                    sql_conn.execute('insert into OVERLAYIPPORT (OVERLAY, IP, PORT, NOT_RESPONDING, RESPONDING)  values(?, ?, ?, ?, ?)', (peer, ip, port, not_response_count, responding_count))
                     sql_conn.commit()
                     new_ips += 1
                 except sqlite3.OperationalError as e:
@@ -92,7 +97,7 @@ def getIPAndPortAndNotResponseCount(sql_conn, peer, log_peers_ip_port):
                     err_inserting_ip += 1
     if not ip:
         err_no_ip += 1
-    return ip, port, not_response_count
+    return ip, port, not_response_count, responding_count
 
 
 def getIPPortFromLog(log_today_str, log_yesterday_str, crawler_log):
@@ -246,34 +251,40 @@ def addCounters(sql_conn, date_str):
 
 
 def getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port):
-    ip, port, not_response_count = getIPAndPortAndNotResponseCount(sql_conn, peer, log_peers_ip_port)
+    ip, port, not_response_count, responding_count = getIPAndPortAndNotResponseCount(sql_conn, peer, log_peers_ip_port)
     lat, lng, city = getCity(sql_conn, ip)
-    return ip, port, not_response_count, lat, lng, city
+    return ip, port, not_response_count, responding_count, lat, lng, city
 
 
-def checkIfAlive(sql_conn, peer, ip, port, not_response_count):
-    if not_response_count >= 3:
+def checkIfAlive(sql_conn, peer, ip, port, not_response_count, response_count):
+    if not_response_count >= max_retry_for_failure:
         return False, not_response_count
     url = 'http://' + ip + ':' + str(port)
-    not_response_count += 1
-    try:
-        # increment the  retry counter
-        sql_conn.execute('update OVERLAYIPPORT SET NOT_RESPONDING = ? WHERE OVERLAY = ?',(not_response_count, peer,))
-        sql_conn.commit()
 
-        # Ping
-        response = requests.get(url, verify=False, timeout=(2, 2))
-        line = response.content.decode('utf-8')
-        if line == '/multistream/1.0.0':
-            # if the peer responds, then reset the retry counter
-            not_response_count = -1
-            sql_conn.execute('update OVERLAYIPPORT SET NOT_RESPONDING = ? WHERE OVERLAY = ?', (not_response_count, peer,))
-            sql_conn.commit()
-            return True, not_response_count
-        else:
-            return False, not_response_count
-    except:
-        return False, not_response_count
+    # Ping
+    try:
+        commandStr = 'curl -X GET {}'.format(url)
+        with open(os.devnull, 'w') as devnull:
+            subprocess.check_output(commandStr, shell=True, timeout=1, stderr=devnull)
+    except Exception as e:
+        if e.output is not None:
+            line = e.output.decode('utf-8')
+            if line != '':
+                multistream = str(line).split('/')[1]
+                if multistream == 'multistream':
+                    # if the peer responds, then reset the retry counter
+                    response_count += 1
+                    not_response_count = 0
+                    sql_conn.execute('update OVERLAYIPPORT SET NOT_RESPONDING = ?, RESPONDING = ? WHERE OVERLAY = ?',(not_response_count, response_count, peer,))
+                    sql_conn.commit()
+                    return True, not_response_count, response_count
+
+        # increment the not-responding retry counter
+        response_count = 0
+        not_response_count += 1
+        sql_conn.execute('update OVERLAYIPPORT SET NOT_RESPONDING = ?, RESPONDING = ? WHERE OVERLAY = ?', (not_response_count, response_count, peer,))
+        sql_conn.commit()
+        return False, not_response_count, response_count
 
 
 def main():
@@ -337,7 +348,7 @@ def main():
         for peer in connected_peers:
             c1_peers += 1
             logging.info('processing connected peer {}'.format(peer))
-            ip, port, not_response_count, lat, lng, city = getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port)
+            ip, port, not_response_count, responding_count, lat, lng, city = getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port)
             if not ip:
                 logging.error('could not proceed with {} as IP could not be found'.format(peer))
                 continue
@@ -345,28 +356,36 @@ def main():
                 logging.error('could not proceed with {} as CITY could not be found'.format(peer))
                 continue
             addToCityCount(city_counts, city, lat, lng, 1, 0, 0)
+            # increment the responding count and make not-responding as 0
+            not_response_count = 0
+            responding_count += 1
+            sql_conn.execute('update OVERLAYIPPORT SET NOT_RESPONDING = ?, RESPONDING = ? WHERE OVERLAY = ?', (not_response_count, responding_count,  peer,))
+            sql_conn.commit()
 
         # harvest IP for the disconnected overlays
         for peer in disconnected_peers:
             logging.info('processing disconnected peer {}'.format(peer))
-            ip, port, not_response_count, lat, lng, city = getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port)
+            ip, port, not_response_count, responding_count, lat, lng, city = getIPPortLatLngCity(sql_conn, peer, log_peers_ip_port)
             if not ip:
                 logging.error('could not proceed with {} as IP could not be found'.format(peer))
                 continue
             if city == 'NOCITY':
                 logging.error('could not proceed with {} as CITY could not be found'.format(peer))
                 continue
-            alive, retry_count = checkIfAlive(sql_conn, peer, ip, port, not_response_count)
+            alive, not_response_count, response_count = checkIfAlive(sql_conn, peer, ip, port, not_response_count, responding_count)
             if alive:
                 logging.info('found {} be connected by pinging default port'.format(ip))
                 c2_peers += 1
                 addToCityCount(city_counts, city, lat, lng, 1, 0, 0)
             else:
                 d_peers += 1
-                if retry_count < 3:
-                    addToCityCount(city_counts, city, lat, lng, 0, 1, 0)
-                else:
+                if response_count > 0 and not_response_count > 0:
+                    logging.error('invalid alive counters {} {} {}'.format(not_response_count, response_count, peer))
+                    continue
+                if response_count <= 0 and not_response_count >= max_retry_for_failure:
                     addToCityCount(city_counts, city, lat, lng, 0, 0, 1)
+                else:
+                    addToCityCount(city_counts, city, lat, lng, 0, 1, 0)
 
         # Insert the batch data in to CITYBATCH table
         insertCityCountsToTable(sql_conn, city_counts, date_str)
