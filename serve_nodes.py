@@ -59,6 +59,7 @@ def getCityList(batch_id):
             green_count = row[3]
             orange_count = row[4]
             red_count = row[5]
+            city = city.replace("'", "")
             line = "'{}' : [ {}, {}, {}, {} ],".format(city, lat, lng, green_count, orange_count, red_count)
             line = line.rstrip('\n')
             city_list[line] = ''
