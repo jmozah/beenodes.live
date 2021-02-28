@@ -172,6 +172,7 @@ def main():
         # Insert the batch data in to CITYBATCH table
         insertCityCountsToTable(beenodes_sql_conn, city_counts, batch_id)
 
+
     finally:
         os.unlink(pidfile)
         logging.info('removed lock and exiting')

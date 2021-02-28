@@ -127,7 +127,7 @@
           marker6.addTo(map);
 
           var marker7 = new L.marker([-66, 5 ], {opacity : 0.01}); //opacity may be set to zero
-          marker7.bindTooltip("Snapshot taken @  {{ snapshot_time }}", {permanent: true, className: "my-label", offset: [5, -20]});
+          marker7.bindTooltip("Snapshot taken @  {{ snapshot_time }} UTC", {permanent: true, className: "my-label", offset: [5, -20]});
           marker7.addTo(map);
 
           // add POI markers to the map and zoom to the features
