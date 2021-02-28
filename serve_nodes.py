@@ -20,7 +20,7 @@ def template_test():
         flask.abort(404)
     city_list, total_peers, connected_peers, disconnected_peers = getCityList(latest_batch)
     cols = latest_batch.split('-')
-    date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + ' - ' + cols[3] + ' Hrs'
+    date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + ' - ' + cols[3] + ' : ' + cols[4]
     return render_template(html_template_file, city_list=city_list, total_peers=total_peers, connected_peers=connected_peers, disconnected_peers=disconnected_peers, snapshot_time=date_string)
 
 
@@ -31,7 +31,7 @@ def render_history(yyyy, mm, dd, hh, MM):
     requested_date = yyyy + '-' + mm + '-' + dd + '-' + hh + '-' + MM
     city_list, total_peers, connected_peers, disconnected_peers = getCityList(requested_date)
     cols = latest_batch.split('-')
-    date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + '-' + cols[3] + ' Hrs'
+    date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + ' - ' + cols[3] + ' : ' + cols[4]
     return render_template(html_template_file, city_list=city_list, total_peers=total_peers, connected_peers=connected_peers, disconnected_peers=disconnected_peers, snapshot_time=date_string)
 
 
