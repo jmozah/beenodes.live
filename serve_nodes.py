@@ -19,7 +19,9 @@ def template_test():
     if not latest_batch:
         flask.abort(404)
     city_list, total_peers, connected_peers, disconnected_peers = getCityList(latest_batch)
-    return render_template(html_template_file, city_list=city_list, total_peers=total_peers, connected_peers=connected_peers, disconnected_peers=disconnected_peers)
+    cols = latest_batch.split('-')
+    date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + ' - ' + cols[3] + ' Hrs'
+    return render_template(html_template_file, city_list=city_list, total_peers=total_peers, connected_peers=connected_peers, disconnected_peers=disconnected_peers, snapshot_time=date_string)
 
 
 @app.route('/history/<yyyy>/<mm>/<dd>/<hh>/<MM>')
@@ -28,7 +30,9 @@ def render_history(yyyy, mm, dd, hh, MM):
         flask.abort(404)
     requested_date = yyyy + '-' + mm + '-' + dd + '-' + hh + '-' + MM
     city_list, total_peers, connected_peers, disconnected_peers = getCityList(requested_date)
-    return render_template(html_template_file, city_list=city_list, total_peers=total_peers, connected_peers=connected_peers, disconnected_peers=disconnected_peers)
+    cols = latest_batch.split('-')
+    date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + '-' + cols[3] + ' Hrs'
+    return render_template(html_template_file, city_list=city_list, total_peers=total_peers, connected_peers=connected_peers, disconnected_peers=disconnected_peers, snapshot_time=date_string)
 
 
 @app.errorhandler(404)
@@ -58,11 +62,13 @@ def getCityList(batch_id):
             line = "'{}' : [ {}, {}, {}, {} ],".format(city, lat, lng, green_count, orange_count, red_count)
             line = line.rstrip('\n')
             city_list[line] = ''
-            total_peers += 1
+            total_peers += green_count
+            total_peers += orange_count
+            total_peers += red_count
             if green_count > 0:
-                connected_peers += 1
+                connected_peers += green_count
             if orange_count > 0:
-                disconnected_peers += 1
+                disconnected_peers += orange_count
         counter_dict[batch_id] = (total_peers, connected_peers, disconnected_peers)
         batch_dic[batch_id] = city_list
     return city_list , total_peers, connected_peers, disconnected_peers
@@ -122,8 +128,8 @@ def main():
     app.run(port=port)
 
     # close database
-    if sql_conn is not None:
-        sql_conn.Close()
+    # if sql_conn is not None:
+    #     sql_conn.Close()
 
 if __name__ == "__main__":
     main()

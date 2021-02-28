@@ -7,13 +7,25 @@
       <script src="https://www.mapquestapi.com/sdk/leaflet/v2.2/mq-map.js?key=L49Y52uI8C3mDFopCdsSyA0ar3Khb5Q2"></script>
       <style>
           .my-label {
-            position: absolute;
-            width:1000px;
-            font-size:20px;
+            width: 200px;
+            font-size:15px;
+            background: transparent;
+            border: none;
+            box-shadow: none;
           }
       </style>
       <script type="text/javascript">
       window.onload = function() {
+
+         var blueIcon = new L.Icon({
+           iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+           shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+           iconSize: [20, 30],
+           iconAnchor: [12, 30],
+           popupAnchor: [1, -34],
+           shadowSize: [30, 30]
+         });
+
          var greenIcon = new L.Icon({
            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -21,6 +33,15 @@
            iconAnchor: [12, 41],
            popupAnchor: [1, -34],
            shadowSize: [41, 41]
+         });
+
+         var greenSmallIcon = new L.Icon({
+           iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+           shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+           iconSize: [20, 30],
+           iconAnchor: [12, 30],
+           popupAnchor: [1, -34],
+           shadowSize: [30, 30]
          });
 
          var orangeIcon = new L.Icon({
@@ -93,6 +114,21 @@
              }
           }
 
+          var marker4 = new L.marker([-55, 10], {icon: blueIcon}); //opacity may be set to zero
+          marker4.bindTooltip("Total Nodes  : {{ total_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
+          marker4.addTo(map);
+
+          var marker5 = new L.marker([-58, 10], {icon: greenSmallIcon}); //opacity may be set to zero
+          marker5.bindTooltip("Reachable from Crawler : {{ connected_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
+          marker5.addTo(map);
+
+          var marker6 = new L.marker([-61, 10], {icon: orangeIcon}); //opacity may be set to zero
+          marker6.bindTooltip("Not Reachable (behind NAT) : {{ disconnected_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
+          marker6.addTo(map);
+
+          var marker7 = new L.marker([-66, 5 ], {opacity : 0.01}); //opacity may be set to zero
+          marker7.bindTooltip("Snapshot taken @  {{ snapshot_time }}", {permanent: true, className: "my-label", offset: [5, -20]});
+          marker7.addTo(map);
 
           // add POI markers to the map and zoom to the features
           features = L.featureGroup(group).addTo(map);
