@@ -123,7 +123,7 @@
           marker5.addTo(map);
 
           var marker6 = new L.marker([-61, 10], {icon: orangeIcon}); //opacity may be set to zero
-          marker6.bindTooltip("Not Reachable (behind NAT) : {{ disconnected_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
+          marker6.bindTooltip("Not Reachable from Crawler (but alive) : {{ disconnected_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
           marker6.addTo(map);
 
           var marker7 = new L.marker([-66, 5 ], {opacity : 0.01}); //opacity may be set to zero
