@@ -3,12 +3,13 @@ import sys
 import sqlite3
 import logging
 import flask
+from pathlib import Path
 from flask import Flask, render_template
 
 app = Flask(__name__)
-db_file = ''
-html_template_file = ''
-latest_batch = ''
+html_template_file = 'index.html.template'
+
+latest_batch = None
 sql_conn = None
 available_batches = dict()
 batch_dic = dict()
@@ -16,8 +17,15 @@ counter_dict= dict()
 
 @app.route("/")
 def template_test():
-    if not latest_batch:
-        flask.abort(404)
+    global latest_batch
+    global available_batches
+    global sql_conn
+
+    if sql_conn is None:
+        open_sql_conn()
+    if latest_batch is None:
+        getAllDatesFromDB()
+
     city_list, total_peers, connected_peers, disconnected_peers = getCityList(latest_batch)
     cols = latest_batch.split('-')
     date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + ' - ' + cols[3] + ' : ' + cols[4]
@@ -26,9 +34,18 @@ def template_test():
 
 @app.route('/history/<yyyy>/<mm>/<dd>/<hh>/<MM>')
 def render_history(yyyy, mm, dd, hh, MM):
+    global latest_batch
+    global sql_conn
+
     if len(yyyy) != 4 or len(mm) != 2 or len(dd) != 2 or len(hh) != 2 or len(MM) != 2:
         flask.abort(404)
     requested_date = yyyy + '-' + mm + '-' + dd + '-' + hh + '-' + MM
+
+    if sql_conn is None:
+        open_sql_conn()
+    if latest_batch is None:
+        getAllDatesFromDB()
+
     city_list, total_peers, connected_peers, disconnected_peers = getCityList(requested_date)
     cols = latest_batch.split('-')
     date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + ' - ' + cols[3] + ' : ' + cols[4]
@@ -90,47 +107,20 @@ def getAllDatesFromDB():
 
 def open_sql_conn():
     global sql_conn
-    if sql_conn is None:
-        try:
-            sql_conn = sqlite3.connect(db_file, check_same_thread=False)
-        except sqlite3.OperationalError as e:
-            logging.error('error opening database: {}'.format(e))
-            sys.exit()
-        logging.info('opened database file {} successfully'.format(db_file))
 
-
-def main():
-    global db_file
-    global html_template_file
-    global sql_conn
-    logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
-                        datefmt='%Y-%m-%d %H:%M:%S')
-
-    if len(sys.argv) == 4:
-        db_file = sys.argv[1]
-        html_template_file = sys.argv[2]
-        port = sys.argv[3]
-    else:
-        logging.error('python3 serve_nodes.py <dbFileWithPath> <htmlTemplateFileWithPath> <port>')
-        sys.exit()
-
-    # check if the db is present
+    home = str(Path.home())
+    db_file = home + '/.crawler/beenodeslive.db'
     if not os.path.isfile(db_file):
         logging.error('db file {} not present'.format(db_file))
         sys.exit()
 
-    # open the DB connection
-    open_sql_conn()
+    try:
+        sql_conn = sqlite3.connect(db_file, check_same_thread=False)
+    except sqlite3.OperationalError as e:
+        logging.error('error opening database: {}'.format(e))
+        sys.exit()
+    logging.info('opened database file {} successfully'.format(db_file))
 
-    # get historic DBs
-    getAllDatesFromDB()
-
-    # start the server
-    app.run(port=port)
-
-    # close database
-    # if sql_conn is not None:
-    #     sql_conn.Close()
 
 if __name__ == "__main__":
-    main()
+    app.run(host='0.0.0.0')
