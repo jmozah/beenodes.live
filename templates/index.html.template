@@ -114,19 +114,19 @@
              }
           }
 
-          var marker4 = new L.marker([-55, 10], {icon: blueIcon}); //opacity may be set to zero
+          var marker4 = new L.marker([-50, 10], {icon: blueIcon}); //opacity may be set to zero
           marker4.bindTooltip("Total Nodes  : {{ total_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
           marker4.addTo(map);
 
-          var marker5 = new L.marker([-58, 10], {icon: greenSmallIcon}); //opacity may be set to zero
+          var marker5 = new L.marker([-53, 10], {icon: greenSmallIcon}); //opacity may be set to zero
           marker5.bindTooltip("Reachable from Crawler : {{ connected_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
           marker5.addTo(map);
 
-          var marker6 = new L.marker([-61, 10], {icon: orangeIcon}); //opacity may be set to zero
+          var marker6 = new L.marker([-59, 10], {icon: orangeIcon}); //opacity may be set to zero
           marker6.bindTooltip("Not Reachable from Crawler (but alive) : {{ disconnected_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
           marker6.addTo(map);
 
-          var marker7 = new L.marker([-66, 5 ], {opacity : 0.01}); //opacity may be set to zero
+          var marker7 = new L.marker([-61, 5 ], {opacity : 0.01}); //opacity may be set to zero
           marker7.bindTooltip("Snapshot taken @  {{ snapshot_time }} UTC", {permanent: true, className: "my-label", offset: [5, -20]});
           marker7.addTo(map);
 
