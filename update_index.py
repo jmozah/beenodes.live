@@ -138,6 +138,8 @@ def main():
     # open the crawler DB
     try:
         crawler_sql_conn = sqlite3.connect(crawler_db_file)
+        ip_info = getIPAndPortAndPeersCountFromCrawlerDB(crawler_sql_conn)
+        crawler_sql_conn.close()
     except sqlite3.OperationalError as e:
         logging.error('error opening crawler database: {}'.format(e))
         beenodes_sql_conn.close()
@@ -150,14 +152,10 @@ def main():
     if os.path.isfile(pidfile):
         print(" {} already exists, exiting".format(pidfile))
         beenodes_sql_conn.close()
-        crawler_sql_conn.close()
         sys.exit()
 
     open(pidfile, "w+").write(pid)
     try:
-        ip_info = getIPAndPortAndPeersCountFromCrawlerDB(crawler_sql_conn)
-        crawler_sql_conn.close()
-
         for key in ip_info:
             (ip, port, peers_count) = ip_info[key]
             lat, lng, city = getLatLngCityFromIP(beenodes_sql_conn, ip)
@@ -172,8 +170,8 @@ def main():
         # Insert the batch data in to CITYBATCH table
         insertCityCountsToTable(beenodes_sql_conn, city_counts, batch_id)
 
-
     finally:
+        beenodes_sql_conn.close()
         os.unlink(pidfile)
         logging.info('removed lock and exiting')
 
