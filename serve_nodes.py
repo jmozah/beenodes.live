@@ -5,8 +5,19 @@ import logging
 import flask
 from pathlib import Path
 from flask import Flask, render_template
+from flask_caching import Cache
+
+
+config = {
+    "DEBUG": True,
+    "CACHE_TYPE": "SimpleCache",
+    "CACHE_DEFAULT_TIMEOUT": 1000
+}
 
 app = Flask(__name__)
+app.config.from_mapping(config)
+cache = Cache(app)
+
 html_template_file = 'index.html.template'
 
 latest_batch = None
@@ -16,7 +27,8 @@ batch_dic = dict()
 counter_dict= dict()
 
 @app.route("/")
-def template_test():
+@cache.cached(timeout=1000)
+def render_root():
     global latest_batch
     global available_batches
     global sql_conn
@@ -33,6 +45,7 @@ def template_test():
 
 
 @app.route('/history/<yyyy>/<mm>/<dd>/<hh>/<MM>')
+@cache.cached(timeout=50)
 def render_history(yyyy, mm, dd, hh, MM):
     global latest_batch
     global sql_conn
