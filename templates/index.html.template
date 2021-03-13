@@ -121,25 +121,21 @@
              }
           }
 
-          var marker4 = new L.marker([-50, 10], {icon: blueIcon});
-          marker4.bindTooltip("Alive Nodes  : {{ total_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
+          var marker4 = new L.marker([-54, 5], {icon: blueIcon, opacity : 0.00});
+          marker4.bindTooltip("Total Alive Nodes : {{ total_peers }}  - Snapshot @  {{ snapshot_time }} UTC", {permanent: true, className: "my-label", offset: [20, -15]});
           marker4.addTo(map);
 
-          var marker5 = new L.marker([-54, 10], {icon: greenSmallIcon});
+          var marker5 = new L.marker([-58, 10], {icon: greenSmallIcon});
           marker5.bindTooltip("Reachable from Crawler : {{ connected_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
           marker5.addTo(map);
 
-          var marker6 = new L.marker([-58, 10], {icon: orangeIcon});
+          var marker6 = new L.marker([-61, 10], {icon: orangeIcon});
           marker6.bindTooltip("Not Reachable from Crawler (but reported alive by reachable nodes) : {{ disconnected_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
           marker6.addTo(map);
 
-          var marker7 = new L.marker([-61, 10 ], {icon: orangeIcon, opacity : 0.01}); //opacity may be set to zero
-          marker7.bindTooltip("Snapshot taken @  {{ snapshot_time }} UTC", {permanent: true, className: "my-label", offset: [20, -15]});
+          var marker7 = new L.marker([-62, -130 ], {icon: orangeIcon, opacity : 0.00});
+          marker7.bindTooltip("IP data powered by https://ipinfo.io/", {permanent: true, className: "ipinfo-label", offset: [20, -15]});
           marker7.addTo(map);
-
-          var marker8 = new L.marker([-62, -130 ], {icon: orangeIcon, opacity : 0.00});
-          marker8.bindTooltip("IP data powered by https://ipinfo.io/", {permanent: true, className: "ipinfo-label", offset: [20, -15]});
-          marker8.addTo(map);
 
           // add POI markers to the map and zoom to the features
           features = L.featureGroup(group).addTo(map);
