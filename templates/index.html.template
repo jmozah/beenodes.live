@@ -138,7 +138,7 @@
           marker7.addTo(map);
 
           var marker8 = new L.marker([-62, -130 ], {icon: orangeIcon, opacity : 0.00});
-          marker8.bindTooltip("https://ipinfo.io/", {permanent: true, className: "ipinfo-label", offset: [20, -15]});
+          marker8.bindTooltip("IP data powered by https://ipinfo.io/", {permanent: true, className: "ipinfo-label", offset: [20, -15]});
           marker8.addTo(map);
 
           // add POI markers to the map and zoom to the features
