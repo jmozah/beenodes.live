@@ -45,13 +45,13 @@ mycursor.execute('''CREATE INDEX IP_info_ORGANISATION on IP_INFO(ORGANISATION)''
 mycursor.execute('''CREATE INDEX IP_info_TYPE on IP_INFO(TYPE)''')
 
 mycursor.execute('''CREATE TABLE CITY_INFO (
-          BATCH           TEXT     NOT NULL,
-          CITY            TEXT     NOT NULL,
-          LAT             REAL     NOT NULL,
-          LNG             REAL     NOT NULL,
-          GREEN_COUNT     INTEGER  NOT NULL,
-          ORANGE_COUNT    INTEGER  NOT NULL,
-          RED_COUNT       INTEGER  NOT NULL,
+          BATCH           VARCHAR(20)    NOT NULL,
+          CITY            VARCHAR(100)   NOT NULL,
+          LAT             FLOAT          NOT NULL,
+          LNG             FLOAT          NOT NULL,
+          GREEN_COUNT     INT            NOT NULL,
+          ORANGE_COUNT    INT            NOT NULL,
+          RED_COUNT       INT            NOT NULL,
           Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY(BATCH, CITY));''')
 mycursor.execute('''CREATE INDEX city_info_batch on CITY_INFO(BATCH)''')
