@@ -13,13 +13,15 @@ mydb = mysql.connector.connect(
 mycursor = mydb.cursor()
 mycursor.execute('''CREATE TABLE PEER_INFO (
           OVERLAY      VARCHAR(64)    NOT NULL,
-          IP4or6       VARCHAR(3)     NOT NULL,
-          IP           VARCHAR(20)    NOT NULL,
+          IP4or6       VARCHAR(10)     NOT NULL,
+          IP           VARCHAR(50)    NOT NULL,
           PROTOCOL     VARCHAR(10)    NOT NULL,
           PORT         MEDIUMINT      NOT NULL,
           UNDERLAY     VARCHAR(64)    NOT NULL,
+          CONNECTED    BOOLEAN        NOT NULL,
+          RETRY_COUNT  MEDIUMINT      NOT NULL,
           PEERS_COUNT  MEDIUMINT      NOT NULL,
-          Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          Timestamp    DATETIME       DEFAULT  CURRENT_TIMESTAMP,
           PRIMARY KEY(OVERLAY));''')
 
 mycursor.execute(''' CREATE TABLE NEIGHBOUR_INFO (
