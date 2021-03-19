@@ -57,7 +57,7 @@ def getCityList(batch_id):
         (total_peers, connected_peers, disconnected_peers) = counter_dict[batch_id]
     else:
         sql_cursor = sql_conn.cursor()
-        sql_cursor.execute("select CITY, LAT, LNG, GREEN_COUNT, ORANGE_COUNT, RED_COUNT from CITY_INFO where BATCH = '?' ",(batch_id))
+        sql_cursor.execute("select CITY, LAT, LNG, GREEN_COUNT, ORANGE_COUNT, RED_COUNT from CITY_INFO where BATCH = %s ",(batch_id,))
         result = sql_cursor.fetchall()
         for row in result:
             city = row[0]

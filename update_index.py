@@ -111,15 +111,18 @@ def insertCityCountsToTable(sql_conn, city_count, batch_id):
         la, ln, green_count, orange_count, red_count = city_count[city]
         if not city or city == 'null':
             continue
+        sql_cursor = sql_conn.cursor()
         try:
-            sql_conn.execute(
-                'insert into CITY_INFO (BATCH, CITY, LAT, LNG, GREEN_COUNT, ORANGE_COUNT, RED_COUNT)  values (?, ?, ?, ?, ?, ?, ?)',
-                (batch_id, city, la, ln, green_count, orange_count, red_count))
+            sql_cursor.execute(
+                'insert into CITY_INFO (BATCH, CITY, LAT, LNG, GREEN_COUNT, ORANGE_COUNT, RED_COUNT)  values (%s, %s, %s, %s, %s, %s, %s)',
+                (batch_id, city, la, ln, green_count, orange_count, red_count),)
             total_rows_in_this_batch += 1
+            sql_conn.commit()
         except Exception as e:
             logging.error('error inserting into CITYBATCH: {}'.format(e))
         finally:
-            sql_conn.commit()
+            sql_cursor.close()
+
     logging.info('added {} rows in this batch'.format(str(total_rows_in_this_batch)))
 
 def main():
