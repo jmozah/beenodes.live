@@ -1,12 +1,9 @@
-import os
 import sys
 import logging
-import flask
 import mysql.connector
 from pathlib import Path
 from flask import Flask, render_template
 from flask_caching import Cache
-
 
 config = {
     "DEBUG": True,
@@ -24,7 +21,31 @@ latest_batch = None
 sql_conn = None
 available_batches = dict()
 batch_dic = dict()
-counter_dict= dict()
+counter_dict = dict()
+
+@app.route("/")
+@cache.cached(timeout=1000)
+def render_root():
+    global sql_conn
+    global latest_batch
+
+    if sql_conn is None:
+        open_sql_conn()
+    if latest_batch is None:
+        getAllDatesFromDB()
+
+    city_list, total_peers, connected_peers, disconnected_peers = getCityList(latest_batch)
+    cols = latest_batch.split('-')
+    date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + ' - ' + cols[3] + ' : ' + cols[4]
+    return render_template(html_template_file, city_list=city_list, total_peers=total_peers,
+                           connected_peers=connected_peers, disconnected_peers=disconnected_peers,
+                           snapshot_time=date_string)
+
+
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('404.html.template', title='404'), 404
+
 
 def getAllDatesFromDB():
     global latest_batch
@@ -57,7 +78,8 @@ def getCityList(batch_id):
         (total_peers, connected_peers, disconnected_peers) = counter_dict[batch_id]
     else:
         sql_cursor = sql_conn.cursor()
-        sql_cursor.execute("select CITY, LAT, LNG, GREEN_COUNT, ORANGE_COUNT, RED_COUNT from CITY_INFO where BATCH = %s ",(batch_id,))
+        sql_cursor.execute(
+            "select CITY, LAT, LNG, GREEN_COUNT, ORANGE_COUNT, RED_COUNT from CITY_INFO where BATCH = %s ", (batch_id,))
         result = sql_cursor.fetchall()
         for row in result:
             city = row[0]
@@ -80,51 +102,18 @@ def getCityList(batch_id):
         counter_dict[latest_batch] = (total_peers, connected_peers, disconnected_peers)
         batch_dic[batch_id] = city_list
         sql_cursor.close()
-    return city_list , total_peers, connected_peers, disconnected_peers
+    return city_list, total_peers, connected_peers, disconnected_peers
 
 
-
-
-@app.route("/")
-@cache.cached(timeout=1000)
-def render_root():
-    global latest_batch
-
-    city_list, total_peers, connected_peers, disconnected_peers = getCityList(latest_batch)
-    cols = latest_batch.split('-')
-    date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + ' - ' + cols[3] + ' : ' + cols[4]
-    return render_template(html_template_file, city_list=city_list, total_peers=total_peers, connected_peers=connected_peers, disconnected_peers=disconnected_peers, snapshot_time=date_string)
-
-
-@app.route('/history/<yyyy>/<mm>/<dd>/<hh>/<MM>')
-@cache.cached(timeout=50)
-def render_history(yyyy, mm, dd, hh, MM):
-    global latest_batch
+def open_sql_conn():
     global sql_conn
 
-    if len(yyyy) != 4 or len(mm) != 2 or len(dd) != 2 or len(hh) != 2 or len(MM) != 2:
-        flask.abort(404)
-    requested_date = yyyy + '-' + mm + '-' + dd + '-' + hh + '-' + MM
-
-    city_list, total_peers, connected_peers, disconnected_peers = getCityList(requested_date)
-    cols = latest_batch.split('-')
-    date_string = cols[0] + '/' + cols[1] + '/' + cols[2] + ' - ' + cols[3] + ' : ' + cols[4]
-    return render_template(html_template_file, city_list=city_list, total_peers=total_peers, connected_peers=connected_peers, disconnected_peers=disconnected_peers, snapshot_time=date_string)
-
-
-@app.errorhandler(404)
-def page_not_found(error):
-    return render_template('404.html.template', title='404'), 404
-
-
-
-if __name__ == "__main__":
-
-    if len(sys.argv) == 2:
-        dbPassword = sys.argv[1]
-    else:
-        logging.error('python3 serve_nodes.py <dbPassword>')
-        sys.exit()
+    home = str(Path.home())
+    db_password_file = home + '/bin/dbpwd'
+    file = open(db_password_file, mode='r')
+    dbPassword = file.read()
+    dbPassword = dbPassword.rstrip('\n')
+    file.close()
 
     ## Open database connection
     try:
@@ -139,6 +128,6 @@ if __name__ == "__main__":
         sys.exit()
     logging.info('opened database successfully')
 
-    getAllDatesFromDB()
 
+if __name__ == "__main__":
     app.run(host='0.0.0.0')

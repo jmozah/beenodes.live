@@ -4,6 +4,7 @@ import logging
 import requests
 import pycountry
 import mysql.connector
+from pathlib import Path
 from datetime import datetime
 
 def checkIfBatchDone(sql_conn, batch_id):
@@ -130,11 +131,12 @@ def main():
     logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
                         datefmt='%Y-%m-%d %H:%M:%S')
 
-    if len(sys.argv) == 2:
-        dbPassword = sys.argv[1]
-    else:
-        logging.error('python3 update_index.py <dbPassword>')
-        sys.exit()
+    home = str(Path.home())
+    db_password_file = home + '/bin/dbpwd'
+    file = open(db_password_file, mode='r')
+    dbPassword = file.read()
+    dbPassword = dbPassword.rstrip('\n')
+    file.close()
 
     today = datetime.now()
     batch_id = today.strftime("%Y-%m-%d-%H-%M")
