@@ -2,18 +2,18 @@ import os
 import sys
 import logging
 import requests
-import mysql.connector
 import pycountry
+import mysql.connector
 from datetime import datetime
 
 def checkIfBatchDone(sql_conn, batch_id):
     id = ''
     sql_cursor = sql_conn.cursor()
     try:
-        sql_cursor.execute("select BATCH from CITY_INFO where BATCH = '?' limit 1", (batch_id))
-        result = sql_cursor.fetchall()
-        for row in result:
-            id = row[0]
+        sql_cursor.execute("select BATCH from CITY_INFO where BATCH=%s", (batch_id,))
+        result = sql_cursor.fetchone()
+        if result:
+            id = result[0]
     except Exception as e:
         logging.error('error checking if this batch is processed already: {}'.format(e))
     finally:
@@ -48,12 +48,12 @@ def getLatLngCityFromIP(sql_conn, ip):
         return lat, lng, city
     sql_cursor = sql_conn.cursor()
     try:
-        sql_cursor.execute("select LAT, LNG, CITY from IP_INFO where IP = '?' limit 1", (ip))
-        result = sql_cursor.fetchall()
-        for row in result:
-            lat = row[0]
-            lng = row[1]
-            city = row[2].rstrip('\n')
+        sql_cursor.execute("select LAT, LNG, CITY from IP_INFO where IP=%s", (ip,))
+        result = sql_cursor.fetchone()
+        if result:
+            lat = result[0]
+            lng = result[1]
+            city = result[2].rstrip('\n')
     except Exception as e:
         logging.error('error getting city from IPTOCITY for IP {}: {}'.format(ip, e))
 
