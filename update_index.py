@@ -26,14 +26,14 @@ def getIPAndPortAndPeersCountFromCrawlerDB(sql_conn):
     ip_info = dict()
     sql_cursor = sql_conn.cursor()
     try:
-        sql_cursor.execute("select IP, PORT, PEERS_COUNT from PEER_INFO")
+        sql_cursor.execute("select IP, PORT, CONNECTED from PEER_INFO")
         result = sql_cursor.fetchall()
         for row in result:
             ip = row[0].rstrip('\n')
             port = row[1]
-            peers_count = row[2]
+            connected = row[2]
             key = ip + str(port)
-            ip_info[key] = (ip, port, peers_count)
+            ip_info[key] = (ip, port, connected)
     except Exception as e:
         logging.error('error getting IP, PORT and PEERS_COUNT from PEER_INFO : {}'.format(e))
     finally:
@@ -173,14 +173,14 @@ def main():
         ip_info = getIPAndPortAndPeersCountFromCrawlerDB(sql_conn)
 
         for key in ip_info:
-            (ip, port, peers_count) = ip_info[key]
+            (ip, port, connected) = ip_info[key]
             lat, lng, city = getLatLngCityFromIP(sql_conn, ip)
             if city == 'NOCITY':
                 logging.error('could not proceed with {} as CITY could not be found'.format(ip))
                 continue
-            if peers_count < 0:
+            if connected == 0:
                 addToCityCount(city_counts, city, lat, lng, 0, 1, 0)
-            if peers_count >= 0:
+            if connected == 1:
                 addToCityCount(city_counts, city, lat, lng, 1, 0, 0)
 
         # Insert the batch data in to CITYBATCH table
