@@ -121,19 +121,19 @@
              }
           }
 
-          var marker4 = new L.marker([-54, 5], {icon: blueIcon, opacity : 0.00});
-          marker4.bindTooltip("Total Alive Nodes : {{ total_peers }}  - Snapshot @  {{ snapshot_time }} UTC", {permanent: true, className: "my-label", offset: [20, -15]});
+          var marker4 = new L.marker([-56, -10], {icon: blueIcon, opacity : 0.00});
+          marker4.bindTooltip("Total Alive Nodes : {{ total_peers }}  - Snapshot @  {{ snapshot_time }} UTC", {permanent: true, className: "my-label", offset: [20, -10]});
           marker4.addTo(map);
 
-          var marker5 = new L.marker([-58, 10], {icon: greenSmallIcon});
+          var marker5 = new L.marker([-60, -10], {icon: greenSmallIcon});
           marker5.bindTooltip("Reachable from Crawler : {{ connected_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
           marker5.addTo(map);
 
-          var marker6 = new L.marker([-61, 10], {icon: orangeIcon});
+          var marker6 = new L.marker([-63, -10], {icon: orangeIcon});
           marker6.bindTooltip("Not Reachable from Crawler (but reported alive by reachable nodes) : {{ disconnected_peers }}", {permanent: true, className: "my-label", offset: [20, -15]});
           marker6.addTo(map);
 
-          var marker7 = new L.marker([-62, -130 ], {icon: orangeIcon, opacity : 0.00});
+          var marker7 = new L.marker([-64, -150 ], {icon: orangeIcon, opacity : 0.00});
           marker7.bindTooltip("IP data powered by https://ipinfo.io/", {permanent: true, className: "ipinfo-label", offset: [20, -15]});
           marker7.addTo(map);
 
