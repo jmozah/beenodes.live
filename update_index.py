@@ -183,6 +183,7 @@ def main():
             lat, lng, city = getLatLngCityFromIP(sql_conn, ip)
             if city == 'NOCITY':
                 logging.error('could not proceed with {} as CITY could not be found'.format(ip))
+                addToCityCount(city_counts, city, 0, 0, 1, 0, 0)
                 continue
             if connected == 0:
                 addToCityCount(city_counts, city, lat, lng, 0, 1, 0)
