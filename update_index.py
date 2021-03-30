@@ -67,10 +67,16 @@ def getLatLngCityFromIP(sql_conn, ip):
             latlng = data['loc'].split(',')
             lat = latlng[0]
             lng = latlng[1]
-            country = data['country']
-            asn = data['asn']['asn']
-            org = data['asn']['name']
-            isp = data['asn']['type']
+            country = ''
+            asn = ''
+            org = ''
+            isp = ''
+            if 'country' in data.keys():
+                country = data['country']
+            if 'asn' in data.keys():
+                asn = data['asn']['asn']
+                org = data['asn']['name']
+                isp = data['asn']['type']
             fc = pycountry.countries.get(alpha_2=country)
             if hasattr(fc, 'official_name'):
                 full_country = fc.official_name
