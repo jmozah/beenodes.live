@@ -93,8 +93,18 @@ def getLatLngCityFromIP(sql_conn, ip):
                 logging.error('error inserting city into IPTOCITY for IP {}: {}'.format(ip, e))
 
         else:
-            city = 'NOCITY'
-
+            lat = ''
+            lng = ''
+            city = 'NO_CITY'
+            full_country = ''
+            asn = ''
+            org = ''
+            isp = ''
+            sql_cursor.execute(
+                "insert into IP_INFO (ip, lat, lng, city, country, asn, organisation, isp)  values (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (ip, lat, lng, city, full_country, asn, org, isp))
+            sql_conn.commit()
+            logging.error('inserting no_city into IPTOCITY for IP {}'.format(ip))
     sql_cursor.close()
     return lat, lng, city
 
